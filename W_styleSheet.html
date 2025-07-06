@@ -1,0 +1,316 @@
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+<link href='https://fonts.googleapis.com/css?family=Noto+Sans' rel='stylesheet'>
+<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css' integrity='sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE40xsADsfeQoEypE+enwcOiGjk/bSuGGKHEyjSoQ1zVisanQ==' crossorigin='anonymous' referrerpolicy='no-referrer' />
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css' rel='stylesheet'>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+
+body {
+  background-color: lightblue;
+}
+
+body.special-page {
+  background-color: #ffe599; /* Azzurro Alice Blue */
+}
+
+body.specialDaily-page {
+  background-color: #ffdaB9; /* Bianco Antico */
+}
+
+body.viewer-page {
+  background-color: #b6d7a8; /* Rosa Nebbia */
+}
+
+/*
+Stile generico per i bottoni
+*/
+  .button-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px; /* Spazio tra i bottoni */
+      justify-content: center; /* Centra i bottoni */
+  }
+
+  .button-container button {
+      flex: 1 1 calc(33.33% - 10px); /* Max 3 bottoni per riga */
+      background-color: white;
+      border: 2px solid black;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 5px;
+      min-width: 80px;
+  }
+
+  .button-container button:hover {
+      background-color: #ddd;
+  }
+
+  .button-container button:active {
+      background-color: #bbb;
+  }
+
+/*
+Stile per il countdown
+*/
+        #countdown {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #8e24aa;
+            color: white;
+            text-align: center;
+            font-size: 20px;
+            padding: 10px;
+            margin-top: 60px; /* Aggiungi spazio sotto per non coprire i bottoni */
+        }
+
+        #myForm {
+          margin-bottom: 60px; /* Aggiungi spazio sotto per non coprire i bottoni */
+        }
+
+/*
+Stile per i bottoni del header
+*/
+/* Stili di base per il contenitore dei bottoni */
+        .button-top-container {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .custom-top-button {
+            float: left;
+            width: 49%;
+            margin-right: 1%;
+            margin-bottom: 1px;
+            padding: 15px 0;
+            font-size: 16px;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            background-color: #4682b4;
+            color: white;
+            transition: background-color 0.3s ease;
+            box-sizing: border-box;
+            text-decoration: none;
+        }
+
+        .custom-bottom-button {
+            float: left;
+            width: 99%;
+            margin-right: 1%;
+            margin-bottom: 15px;
+            padding: 5px 0;
+            font-size: 12px;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            background-color: #4682b4;
+            color: white;
+            transition: background-color 0.3s ease;
+            box-sizing: border-box;
+            text-decoration: none;
+        }
+
+        .custom-top-button:last-child, .custom-bottom-button:last-child {
+            margin-right: 0;
+        }
+
+        .custom-top-button:hover, .custom-bottom-button:hover {
+            background-color: #5a9bd3;
+        }
+
+        .custom-top-button:active, .custom-bottom-button:active {
+            background-color: #2f5f7a;
+        }
+
+/* Stile per i bottoni del menu */
+.menu-button {
+    border: none; /* Rimuove i bordi predefiniti */
+    cursor: pointer; /* Cambia il cursore al passaggio del mouse */
+    text-align: left;
+    margin: 1px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+/* Stile specifico per il bottone del calendario */
+.calendar-button {
+    background-color: #ffe599; /* giallo chiaro */
+    color: black; /* Colore del testo */
+}
+
+.calendar-button:hover {
+    background-color: #ffd966; /* giallo scuro per effetto hover */
+}
+
+/* Stile specifico per il bottone della planimetria */
+.hall-button {
+    background-color: #ffdaB9; /* #e67e22 Colore di sfondo arancione */
+    color: black; /* Colore del testo */
+}
+
+.hall-button:hover {
+    background-color: #e67e22; /* #d35400 Colore di sfondo arancione più scuro al passaggio del mouse */
+}
+
+/* Stile specifico per il bottone della planimetria */
+.visualizza-button {
+    background-color: #b6d7a8; /* Colore di sfondo verde */
+    color: black; /* Colore del testo */
+}
+
+.visualizza-button:hover {
+    background-color: #93c47d; /* Colore di sfondo verde più scuro al passaggio del mouse */
+}
+
+/* Stile specifico per il bottone della scheda evento */
+.sheet-button {
+    background-color: #e0aaff; /* Colore di sfondo viola */
+    color: black; /* Colore del testo */
+}
+
+.sheet-button:hover {
+    background-color: #c77dff; /* Colore di sfondo viola più scuro al passaggio del mouse */
+}
+
+/*
+Style per i selettori di colore
+*/
+    .whiteText {
+      background-color: white;
+    }
+
+    .greenText {
+      background-color: green;
+    }
+
+    .greenLightText {
+      background-color: lightgreen;
+    }
+
+    .redLightText {
+      background-color: #ffcccb;
+    }
+
+    .purpleText {
+      background-color: purple;
+    }
+
+    .redText {
+      background-color: red;
+    }
+
+/*
+Style per il dropdown strutture e gate
+*/
+/* Multi Checkbox web component CSS variables and their default values. */
+.jquery-multiple-select li { list-style-type: none; }
+
+.jquery-multiple-select ul {
+  padding: 0px;
+  margin: 0px;
+}
+
+.jquery-multiple-select {
+  float: left;
+  background: #f5f5f5;
+}
+
+.jquery-multiple-select li {
+  padding: 12px;
+  width: 117px;
+}
+
+.active-multiple-select {
+  background: #422727;
+  color: #fff;
+}
+
+span.result-value-multiple-select {
+  padding: 10px;
+  border: 1px solid #422727;
+  margin-right: 7px;
+  margin-top: 19px;
+  display: block;
+  float: left;
+  margin-left: 8px;
+  border-radius: 10px;
+  position: relative;
+}
+
+span.cancel-multiple-select {
+  position: absolute;
+  top: 1px;
+  font-size: 10px;
+  height: 10px;
+  width: 10px;
+  background: #f00;
+  text-align: center;
+  line-height: 8px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+  right: 5px;
+}
+
+.main-div {
+  float: left;
+  width: 800px;
+  margin-bottom: 26px;
+}
+
+.jquery-multiple-select-result:after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+.custom-result-list:after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+span.result-value-multiple-select { background: #fff; }
+
+/* Stile per la tabelle con i giorni e orari */
+#empTable {
+    width: 100%; /* Imposta la larghezza della tabella */
+    border-collapse: collapse; /* Collassa i bordi per una visualizzazione più compatta */
+}
+#empTable th, #empTable td {
+    border: 1px solid #ddd; /* Bordo per le celle */
+    padding: 0px; /* Spazio interno delle celle */
+    text-align: center; /* Allinea il testo al centro */
+}
+#empTable th {
+    background-color: #f2f2f2; /* Colore di sfondo delle intestazioni */
+}
+.selectDate {
+    width: 80px; /* Larghezza degli input */
+    font-size: 11px; /* Dimensione del testo */
+}
+.selectStartHour, .selectEndHour, .selectHour, #mySelect {
+    width: 60px; /* Larghezza degli input */
+    font-size: 11px; /* Dimensione del testo */
+}
+input[type="button"] {
+    padding: 1px 1px; /* Dimensioni del pulsante */
+}
+
+#output {
+  /* display: none; */
+  opacity: 0;
+}
+
+</style>

@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+
+<head>
+  <base target="_top">
+  <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+  <!-- da qui sotto si può copiare -->
+  <script>
+    // store in data the array in doGet
+    var data = <?!= JSON.stringify(dataFromServerTemplate) ?>; //Stores the data directly in the javascript code
+    const minutesPermitted = "<?= minutesPermitted ?>";
+
+    // for multi language support
+    const translationsString = <?= JSON.stringify(translations) ?>;
+    const currentLanguage = "<?= currentLanguage ?>";
+
+    // Deserializza la stringa JSON in un oggetto JavaScript
+    const translations = JSON.parse(translationsString);
+
+    // Funzione translate
+    function translate(key, placeholders = {}) {
+      // Dividi la chiave in livelli
+      const keys = key.split('.');
+      let translation = translations[currentLanguage];
+
+      // Naviga nel dizionario
+      for (const k of keys) {
+        translation = translation?.[k];
+        if (!translation) {
+          return key; // Se una chiave non è trovata, restituisci la chiave originale
+        }
+      }
+
+      // Sostituisci i placeholder dinamici
+      Object.keys(placeholders).forEach(placeholder => {
+        const regex = new RegExp(`\\{${placeholder}\\}`, 'g'); // Trova il placeholder
+        translation = translation.replace(regex, placeholders[placeholder]);
+      });
+      return translation;
+    }
+
+    var selectedStruct = data.pop();
+    var typeEvData = data.pop();
+    var refOpData = data.pop();
+    var refComData = data.pop();
+    var allestitoreData = data.pop();
+    var cateringData = data.pop();
+    var finishDate = data.pop();
+    var startDate = data.pop();
+
+    // sample usage
+    function initialize() {
+    }
+    // use onload or use jquery to call your initialization after the document loads
+    window.onload = initialize;
+  </script>
+</head>
+
+<script>
+  // Function to clear localStorage
+  function clearLocalStorage() {
+    localStorage.removeItem('startDate');
+    localStorage.removeItem('finishDate');
+  }
+
+  function reloadFunct() {
+    document.getElementById("reloadStruct").style.display = "block";
+    document.getElementById("standardForm").style.display = "none";
+  }
+
+  function findKey(key, array, pos) {
+    var index = -1;
+    for (let i = 0, len = array.length; i < len; i++) {
+      if (array[i][pos] === key) {
+        index = i;
+        break;
+      }
+    }
+    if (index > -1) {
+      return index
+    } else { return index = -1 }
+  }
+
+  function runFunc() {
+
+    var first = document.getElementById("startDate").value;
+    var last = document.getElementById("finishDate").value;
+
+    var opz = document.getElementById("opz").value;
+    var opzExp = document.getElementById("opzExp").value;
+
+    var selectedStartDate = new Date(first);
+    var selectedFinishDate = new Date(last);
+
+    // Flag per il controllo degli errori
+    var hasError = false;
+
+    // Controllo date evento
+    if (selectedFinishDate < selectedStartDate) {
+      alert(translate('alertHtml.messageDate'));
+      document.getElementById("finishDate").value = ''; // Resetta il valore
+      hasError = true;
+    }
+
+    // Controllo date evento per non superare le 24 ore
+    if ((selectedFinishDate.getTime() - selectedStartDate.getTime()) >= (1 * 24 * 60 * 60 * 1000)) {
+      alert(translate('hourMenuPage.extraTime'));
+      document.getElementById("finishDate").value = ''; // Resetta il valore
+      hasError = true;
+    }
+
+    // Controllo scadenza opzione
+    if ((opz === "SI")||(opz === "OFF")) {
+      if (!opzExp) {
+        alert(translate('addEventPage.opzExpAlert'));
+        hasError = true;
+      } else {
+        var selectedOpzExp = new Date(opzExp);
+        var today = new Date();
+        if (selectedOpzExp >= selectedStartDate) {
+          alert(translate('addEventPage.opzExpDateAlert'));
+          document.getElementById("opzExp").value = ''; // Resetta il valore
+          hasError = true;
+        } else if (selectedOpzExp <= today) {
+          alert(translate('addEventPage.opzExpTodayAlert'));
+          document.getElementById("opzExp").value = ''; // Resetta il valore
+          hasError = true;          
+        }
+      }
+    }
+
+    // Altri controlli
+    if (!hasError) {
+      var selectElementQ = document.getElementById('quartiere');
+      var selectElementC = document.getElementById('congress');
+      var selectElementI = document.getElementById('ingressi');
+      var selectElementA = document.getElementById('aree');
+      var selectElementP = document.getElementById('parcheggi');
+
+      var selectedValuesQ = Array.from(selectElementQ.selectedOptions, (option) => option.value);
+      var selectedValuesC = Array.from(selectElementC.selectedOptions, (option) => option.value);
+      var selectedValuesI = Array.from(selectElementI.selectedOptions, (option) => option.value);
+      var selectedValuesA = Array.from(selectElementA.selectedOptions, (option) => option.value);
+      var selectedValuesP = Array.from(selectElementP.selectedOptions, (option) => option.value);
+
+      var finalStructs = selectedValuesQ.concat(selectedValuesC, selectedValuesI, selectedValuesA, selectedValuesP).filter(x => x);
+
+      if ((selectedValuesQ.length == 0) && (selectedValuesC.length == 0)) {
+        alert(translate('addEventPage.justQorCC'));
+        hasError = true;
+      } else if (selectedValuesI.length == 0 && document.getElementById("typeEv").value !== 'lav' && document.getElementById("opz").value !== 'OFF') {
+        alert(translate('addEventPage.oneGate'));
+        hasError = true;
+      }
+    }
+
+    // Se non ci sono errori, procedi con il submit
+    if (!hasError) {
+      listEvents = submit();
+      var eventi = document.getElementById("output");
+      var outputEvents = eventi.innerHTML;
+      if (listEvents.length > 0) {
+        var matrix = stringToMatrix(outputEvents, 8);
+        var testoEventi = translate('addEventPage.infoOutTitle');
+        var testoEventi = testoEventi + translate('addEventPage.infoOutLabel');
+        for (let i = 0; i < matrix.length; i++) {
+          testoEventi = testoEventi + "•" + formatDate(matrix[i][1]).giorno + "      " + matrix[i][0] + "   " + formatDate(matrix[i][1]).ora + "   " + formatDate(matrix[i][2]).ora + "\n";
+        }
+        testoEventi = testoEventi + translate('addEventPage.infoOutDesc') + matrix[0][3];
+        testoEventi = testoEventi + translate('addEventPage.infoOutWhere') + matrix[0][4];
+        testoEventi = testoEventi + translate('addEventPage.infoOutQuest');
+
+        if (confirm(testoEventi)) {
+
+          const button = document.getElementById('submitButton');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewCalendarPage.goButtonTr');
+            //alert("Operazione completata!");
+          }, 20000);
+
+          google.script.run.createEvents(first, last, outputEvents, 'hall');
+        }
+      }
+    }
+  }
+
+  function cancella() {
+    document.getElementById("myForm").reset();
+    document.getElementById('startDate').value = startDate;
+    document.getElementById('finishDate').value = finishDate;
+  }
+  function back() {
+    google.script.run.manageSmallRoom()
+  }    
+</script>
+
+<!-- <body> -->
+
+<body onload="createTable()" class="specialDaily-page">
+  <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+  <h4 class="align">
+    <?= translate('addEventPage.timePeriodPre') ?>
+  </h4>
+  <form id="myForm" onsubmit="runFunc()">
+    <div class="row mb-3">
+      <label for="startDate" class="col-sm-2 col-form-label">
+        <?= translate('viewCalendarPage.startDateTr') ?>
+      </label>
+      <div class="col-sm-10">
+        <input required type="datetime-local" onchange="reloadFunct();" class="form-control form-control-lg" value=""
+          name="startDate" id="startDate" placeholder="Inizio">
+      </div>
+    </div>
+    <div class="row mb-3">
+      <label for="finishDate" class="col-sm-2 col-form-label">
+        <?= translate('viewCalendarPage.endDateTr') ?>
+      </label>
+
+      <div class="col-sm-10">
+        <input required type="datetime-local" onchange="reloadFunct();" class="form-control form-control-lg" value=""
+          name="finishDate" id="finishDate" placeholder="Fine">
+      </div>
+    </div>
+    <div id="standardForm" style="display: block;">
+
+      <div class="row mb-3">
+        <label for="name" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.eventName') ?>
+        </label>
+        <div class="col-sm-10">
+          <input required onchange="document.getElementById('update').style.visibility = 'visible'" type="text"
+            class="form-control form-control-lg" value="" name="name" id="name"
+            placeholder="<?= translate('addEventPage.eventName') ?>">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="opz" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.isDefined') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="opz" id="opz"
+            onchange="handleOptionChange(); document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+            <option value='OFF'><?= translate('addEventPage.offer') ?> </option> <!-- Offerta -->
+            <option value='SI'><?= translate('addEventPage.option') ?></option> <!-- Opzione o NO-->
+            <option value='NO'>
+              <?= translate('addEventPage.confirmed') ?> <!-- Confermato o SI -->
+            </option>
+
+          </select>
+        </div>
+      </div>
+
+      <!-- Expiration date for pending Event -->
+      <div class="row mb-3" id="opzExpContainer" style="display: none;">
+        <label for="opzExp" class="col-sm-2 col-form-label"><?= translate('addEventPage.opzExpTitle') ?></label>
+        <div class="col-sm-10">
+          <input type="date" class="form-control form-control-lg" id="opzExp" name="opzExp" placeholder="dd/mm/yyyy"
+            data-date-format="dd/mm/yyyy">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="color" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.colorCalendar') ?>
+        </label>
+        <div class="col-sm-10">
+          <select onchange="this.className=this.options[this.selectedIndex].className"
+            class="whiteText form-control form-control-lg" name="color" id="color">
+            <option class="whiteText" selected value="nessuno">
+              <?= translate('addEventPage.colNotSpec') ?>
+            </option>
+            <option class="redText" value="rosso">
+              <?= translate('addEventPage.colRed') ?>
+            </option>
+            <option class="greenText" value="verde">
+              <?= translate('addEventPage.colGreen') ?>
+            </option>
+            <option class="greenLightText" value="verdeChiaro">
+              <?= translate('addEventPage.colLGreen') ?>
+            </option>
+            <option class="redLightText" value="rossoChiaro">
+              <?= translate('addEventPage.colLRed') ?>
+            </option>
+            <option class="purpleText" value="viola">
+              <?= translate('addEventPage.colViolet') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="public" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.isOpen') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="public" id="public"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+            <option value='SI'>
+              <?= translate('addEventPage.chooseYes') ?>
+            </option>
+            <option value='NO'>NO</option>
+
+          </select>
+        </div>
+      </div>
+
+      <h6>
+        <?= translate('addEventPage.selectStruc') ?>
+      </h6>
+      <div class="row mb-3" id="mainStructs">
+        <div class="col-sm-10">
+
+          <label>
+            <?= translate('addEventPage.selQcenter') ?>
+          </label><br />
+          <select style="width: 100%;" id="quartiere" multiple multiselect-search="true" multiselect-select-all="true"
+            multiselect-hide-x="true" multiselect-max-items="10">
+          </select>
+
+          <label>
+            <?= translate('addEventPage.selCcenter') ?>
+          </label><br />
+          <select style="width: 100%;" id="congress" multiple multiselect-search="true" multiselect-select-all="true"
+            multiselect-hide-x="true" multiselect-max-items="10">
+          </select>
+          <label>
+            <?= translate('addEventPage.selGService') ?>
+          </label><br />
+          <select style="width: 100%;" id="ingressi" multiple multiselect-search="true" multiselect-select-all="true"
+            multiselect-hide-x="true" multiselect-max-items="10">
+          </select>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-sm-10">
+
+          <label>
+            <?= translate('addEventPage.selAreas') ?>
+          </label><br />
+          <select style="width: 100%;" id="aree" multiple multiselect-search="true" multiselect-select-all="true"
+            multiselect-hide-x="true" multiselect-max-items="10">
+          </select>
+
+          <label>
+            <?= translate('addEventPage.selParkEvent') ?>
+          </label><br />
+          <select style="width: 100%;" id="parcheggi" multiple multiselect-search="true" multiselect-select-all="true"
+            multiselect-hide-x="true" multiselect-max-items="10">
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="org" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.selOrganizer') ?>
+        </label>
+        <div class="col-sm-10">
+          <input required type="text" class="form-control form-control-sm" value="" name="org" id="org"
+            placeholder="<?= translate('addEventPage.placeNameOrganizer') ?>">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="org" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.eventCode') ?>
+        </label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control form-control-sm" value="" name="code" id="code"
+            placeholder="<?= translate('addEventPage.placeCode') ?>">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="typeEv" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.typeEvent') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="typeEv" id="typeEv"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="refCom" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.refCom') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="refCom" id="refCom"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="refOp" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.refOp') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="refOp" id="refOp"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="allestitore" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.standFitter') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="allestitore" id="allestitore"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="catering" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.catering') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="catering" id="catering"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="note" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.details') ?>
+        </label>
+        <div class="col-sm-10">
+          <input onchange="document.getElementById('update').style.visibility = 'visible'" type="text"
+            class="form-control form-control-lg" value="" name="note" id="note"
+            placeholder="<?= translate('addEventPage.placeDetails') ?>">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <!-- Display the total square meter and seating capacity -->
+        <div class="col-sm-10">
+          <input type="text" disabled="true" id="sums" class="form-control form-control-sm"
+            placeholder="<?= translate('addEventPage.placeSqPax') ?>">
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="vvf" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.vvf') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="vvf" id="vvf"
+            onchange="document.getElementById('update').style.visibility = 'visible'">
+            <option disabled selected value>
+              <?= translate('addEventPage.chooseList') ?>
+            </option>
+            <option disabled="true" value='CPVLPS'>
+              <?= translate('addEventPage.CPVLPS') ?>
+            </option>
+            <option disabled="true" value='SI'>
+              <?= translate('addEventPage.mandatory') ?>
+            </option>
+            <option disabled="true" value='NO'>
+              <?= translate('addEventPage.notMandatory') ?>
+            </option>
+            <option value='Richiesto'>
+              <?= translate('addEventPage.reqByOrg') ?>
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="cri" class="col-sm-2 col-form-label">
+          <?= translate('addEventPage.presCRI') ?>
+        </label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="cri" id="cri"
+                        onchange="document.getElementById('update').style.visibility = 'visible'">
+                        <option disabled selected value><?= translate('addEventPage.chooseList') ?>
+          </option>
+          <option disabled="true" value='CPVLPS'>
+            <?= translate('addEventPage.CPVLPS') ?>
+          </option>
+          <option disabled="true" value='SI'>
+            <?= translate('addEventPage.mandatory') ?>
+          </option>
+          <option disabled="true" value='NO'>
+            <?= translate('addEventPage.notMandatory') ?>
+          </option>
+          <option value='Richiesto'>
+            <?= translate('addEventPage.reqByOrg') ?>
+          </option>
+          </select>
+      </div>
+    </div>
+
+    <h6>
+      <?= translate('addEventPage.defAllDay') ?>
+    </h6>
+    <div class="row mb-3">
+      <div class="col-sm-10">
+        <div id="cont"></div> <!-- the container to add the TABLE -->
+      </div>
+    </div>
+
+    <div class="button-container">
+      <button id="submitButton" type="submit" class="align">
+        <?= translate('viewCalendarPage.goButtonTr') ?>
+      </button>
+      <button onclick="cancella()"><?= translate('viewCalendarPage.delAllFormTr') ?></button>
+    </div>
+    </div>
+  </form>
+  <!-- Se cambio le date iniziali -->
+  <div id="messageDate" style="display: block;"></div>
+ <div class="button-container">
+  <button id="reloadStruct" style="display: none;">
+    <?= translate('addEventPage.findNewTime') ?>
+  </button>
+</div>
+  <!-- Div per visualizzare il countdown -->
+  <div id="countdown">
+    <?= translate('addEventPage.timeElapsed') ?><span id="timeElapsed"></span>
+  </div>
+
+  <div id='output'></div>
+</body>
+<script>
+  // Script for expiration date
+// function handleOption()
+
+  // Script per il countdown
+  let timeLeft = (minutesPermitted - 5) * 60; // in seconds
+
+  function updateCountdown() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+
+    document.getElementById("timeElapsed").textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    timeLeft--;
+
+    // Cambia il colore del countdown in base al tempo rimanente
+    if (timeLeft <= 5 * 60) { // Da -5 a 0 minuti
+      document.getElementById("countdown").style.backgroundColor = "red";
+    }
+
+    if (timeLeft < 0) {
+      // Reindirizza alla pagina finale se il tempo è scaduto
+      // window.location.href = "pagina_finale.html";
+      google.script.run.completeMenu();
+    }
+  }
+
+  setInterval(updateCountdown, 1000); // Aggiorna il countdown ogni secondo
+
+
+  document.getElementById('startDate').value = formatDate(startDate).giornoOra;
+  document.getElementById('finishDate').value = formatDate(finishDate).giornoOra;
+
+  function buttonClickFunction() {
+    //alert("The button was clicked!");
+    var first = document.getElementById("startDate").value;
+    var last = document.getElementById("finishDate").value;
+
+    var selectedStartDate = new Date(first);
+    var selectedFinishDate = new Date(last);
+    if (selectedFinishDate < selectedStartDate) {
+      alert(translate('alertHtml.messageDate'));
+      $(document).ready(function () {
+        $("#finishDate").value('');
+      });
+    } else if ((selectedFinishDate.getTime() - selectedStartDate.getTime()) >= (1 * 24 * 60 * 60 * 1000 - 30 * 60 * 1000)) {
+      alert(translate('hourMenuPage.extraTime'));
+      $(document).ready(function () {
+        $("#finishDate").value('');
+      });
+    } else {
+
+      // Cambia stato del bottone quando viene cliccato
+      const button = document.getElementById('reloadStruct');
+      button.innerText = translate('viewCalendarPage.waitTr'); // Cambia testo
+      button.style.fontSize = "24px"; // Testo più grande
+      button.style.fontWeight = "bold"; // (Opzionale) Testo in grassetto
+      button.disabled = true; // Disabilita il bottone
+
+      // Timer per riattivare il bottone dopo 30 secondi
+      setTimeout(() => {
+        button.innerText = translate('addEventPage.findNewTime'); // Testo originale
+        button.style.fontSize = ""; // Ripristina la dimensione originale
+        button.style.fontWeight = ""; // Ripristina lo stile originale            
+        button.disabled = false; // Riattiva il bottone
+      }, 20000); // 30 secondi
+
+      google.script.run.showFreeHall(first, last)
+    }
+  }
+  // Vecchia funzione
+  // Registra l'event listener per il bottone
+  document.addEventListener('DOMContentLoaded', function () {
+    const myButton = document.getElementById('reloadStruct');
+    if (myButton) {
+      myButton.addEventListener('click', buttonClickFunction);
+    }
+  });
+
+  // FINE SE CAMBIO LE DATE INIZIALI
+
+  // Per settare le option di CRI E VVF
+
+  var areaSelect = document.getElementById('quartiere');
+  var paxSelect = document.getElementById('congress');
+  var vvfSelect = document.getElementById('vvf');
+  var criSelect = document.getElementById('cri');
+  var sumsInput = document.getElementById('sums');
+  var public = document.getElementById('public');
+  var typeEv = document.getElementById("typeEv");
+
+  function updateSumsInput() {
+    var selectedMqValues = areaSelect.selectedOptions;
+    var selectedPaxValues = paxSelect.selectedOptions;
+    sumsInput.value = '';
+
+    for (let i = 0; i < selectedMqValues.length; i++) {
+      if (i > 0) {
+        sumsInput.value += ',';
+      }
+      sumsInput.value += selectedMqValues[i].value;
+    }
+
+    if ((selectedMqValues.length > 0) && (selectedPaxValues.length > 0)) {
+      sumsInput.value += ',';
+    }
+
+    for (let i = 0; i < selectedPaxValues.length; i++) {
+      if (i > 0) {
+        sumsInput.value += ',';
+      }
+      sumsInput.value += selectedPaxValues[i].value;
+    }
+
+    var sumMq = 0;
+    var sumPax = 0;
+    var valuesArray = sumsInput.value.split(',');
+    for (let i = 0; i < valuesArray.length; i++) {
+      if (findKey(valuesArray[i], data, 0) >= 0) {
+        sumMq += parseInt(data[findKey(valuesArray[i], data, 0)][3]);
+        sumPax += parseInt(data[findKey(valuesArray[i], data, 0)][4]);
+      }
+    }
+
+    sumsInput.value = ' ( ' + sumMq + ' mq | ' + sumPax + ' pax)'; // solo mq e pax
+
+    // Update cri2Select based on sum
+    if (((sumMq > 4000) || (sumPax > 1000)) && (public.value == 'SI')) {
+      criSelect.value = ((criSelect.value == 'NI') ? 'NI' : 'SI');
+      //criSelect.value = 'SI';
+      vvfSelect.value = ((vvfSelect.value == 'NI') ? 'NI' : 'SI');
+      //vvfSelect.value = 'SI';
+    } else {
+      criSelect.value = ((criSelect.value == 'NI') ? 'NI' : 'NO');
+      //criSelect.value = 'NO';
+      vvfSelect.value = ((vvfSelect.value == 'NI') ? 'NI' : 'NO');
+      //vvfSelect.value = 'NO';
+    }
+    if (typeEv.value === 'concerto') {
+      vvfSelect.value = 'CPVLPS';
+      criSelect.value = "CPVLPS";
+    }
+
+  }
+
+
+  areaSelect.addEventListener('change', updateSumsInput);
+  public.addEventListener('change', updateSumsInput);
+  paxSelect.addEventListener('change', updateSumsInput);
+
+  // Fine per settare CRI e VVF
+
+  // Per leggere le variabili importante da google sheet --> refOp, refCom, allestitore
+  var typeEv = document.getElementById("typeEv");
+  for (let i = 0; i < typeEvData.length; i++) {
+    if (typeEvData[i][2]) {
+      var option = document.createElement("option");
+      option.value = typeEvData[i][1];
+      option.text = typeEvData[i][0];
+      if (!typeEvData[i][2]) { option.disabled = true };
+      typeEv.appendChild(option);
+    }
+  }
+
+  var refCom = document.getElementById("refCom");
+  for (let i = 0; i < refComData.length; i++) {
+    if (refComData[i][2]) {
+      var option = document.createElement("option");
+      option.value = refComData[i][1];
+      option.text = refComData[i][0];
+      if (!refComData[i][2]) { option.disabled = true };
+      refCom.appendChild(option);
+    }
+  }
+
+  var refOp = document.getElementById("refOp");
+  for (let i = 0; i < refOpData.length; i++) {
+    if (refOpData[i][2]) {
+      var option = document.createElement("option");
+      option.value = refOpData[i][1];
+      option.text = refOpData[i][0];
+      if (!refOpData[i][2]) { option.disabled = true };
+      refOp.appendChild(option);
+    }
+  }
+
+  var allestitore = document.getElementById("allestitore");
+  for (let i = 0; i < allestitoreData.length; i++) {
+    if (allestitoreData[i][2]) {
+      var option = document.createElement("option");
+      option.value = allestitoreData[i][1];
+      option.text = allestitoreData[i][0];
+      if (!allestitoreData[i][2]) { option.disabled = true };
+      allestitore.appendChild(option);
+    }
+  }
+
+  var catering = document.getElementById("catering");
+  for (let i = 0; i < cateringData.length; i++) {
+    if (cateringData[i][2]) {
+      var option = document.createElement("option");
+      option.value = cateringData[i][1];
+      option.text = cateringData[i][0];
+      if (!cateringData[i][2]) { option.disabled = true };
+      catering.appendChild(option);
+    }
+  }
+
+  // Per leggere le strutture importate da google sheet
+  var selectedValues = selectedStruct.split(",").map(s => s.trim());
+
+  // Per leggere le strutture importate da google sheet, solo le sale ((data[i][2] == 1) && (data[i][6] == 1))
+  var quartiere = document.getElementById("quartiere");
+  for (let i = 0; i < data.length; i++) {
+    var option = document.createElement("option");
+    if ((data[i][2] == 1)&&(data[i][6]==1)) {
+      option.value = data[i][0];
+      option.text = data[i][1];
+        // Se il valore è nell'array selectedValues, impostalo come selezionato
+        if (selectedValues.includes(data[i][0])) {
+            option.selected = true;
+        }
+      quartiere.appendChild(option);
+    }
+  }
+  // Load Centro Congressi data[i][2]==2 data[i][6]==1 METTO SOLO LE SALE
+  var congress = document.getElementById("congress");
+  for (let i = 0; i < data.length; i++) {
+    var option = document.createElement("option");
+    if ((data[i][2] == 2)&&(data[i][6]==1))  {
+      option.value = data[i][0];
+      option.text = data[i][1];
+        // Se il valore è nell'array selectedValues, impostalo come selezionato
+        if (selectedValues.includes(data[i][0])) {
+            option.selected = true;
+        }
+      congress.appendChild(option);
+    }
+  }
+  // Load Ingressi data[i][2]==3
+  var ingressi = document.getElementById("ingressi");
+  for (let i = 0; i < data.length; i++) {
+    var option = document.createElement("option");
+    if (data[i][2] == 3) {
+      option.value = data[i][0];
+      option.text = data[i][1];
+      ingressi.appendChild(option);
+    }
+  }
+  // Load Aree data[i][2]==4
+  var aree = document.getElementById("aree");
+  for (let i = 0; i < data.length; i++) {
+    var option = document.createElement("option");
+    if (data[i][2] == 4) {
+      option.value = data[i][0];
+      option.text = data[i][1];
+      aree.appendChild(option);
+    }
+  }
+  // Load Parcheggi data[i][2]==5
+  var parcheggi = document.getElementById("parcheggi");
+  for (let i = 0; i < data.length; i++) {
+    var option = document.createElement("option");
+    if (data[i][2] == 5) {
+      option.value = data[i][0];
+      option.text = data[i][1];
+      parcheggi.appendChild(option);
+    }
+  }             
+</script>
+
+<!-- qui ci metto tutto ciò che riguarda la tabella con i giorni e orari di evento -->
+<script>
+  var arrHead = new Array();	// array for header.
+  arrHead = translate('addEventPage.tableArray').split(',');
+
+  // formatDateInput(new date) ---> YYYY-MM-DD
+  function formatDateInput(date) {
+    var year = date.getFullYear();
+    var month = ("0" + (date.getMonth() + 1)).slice(-2);
+    var day = ("0" + date.getDate()).slice(-2);
+    return year + "-" + month + "-" + day;
+  }
+
+  // formatDateInput(new date) ---> YYYY-MM-DD
+  function formatHourInput(date) {
+    var hours = ('0' + date.getHours()).slice(-2);
+    var minutes = ('0' + date.getMinutes()).slice(-2);
+    return hours + ":" + minutes;
+  }
+
+
+  // first create TABLE structure with the headers. 
+  function createTable() {
+    var empTable = document.createElement('table');
+    empTable.setAttribute('id', 'empTable'); // table id.
+
+    var tr = empTable.insertRow(-1);
+    for (let h = 0; h < arrHead.length; h++) {
+      var th = document.createElement('th'); // create table headers
+      th.innerHTML = arrHead[h];
+      tr.appendChild(th);
+    }
+    var div = document.getElementById('cont');
+    div.appendChild(empTable);  // add the TABLE to the container.
+    var first = document.getElementById("startDate").value;
+    var last = document.getElementById("finishDate").value;
+    var selectedStartDate = new Date(first);
+    var selectedDate = new Date(first);
+    var selectedFinishDate = new Date(last);
+    const oneDay = 24 * 60 * 60 * 1000; // Milliseconds in one day
+    do {
+      addRow(selectedDate, selectedStartDate, selectedFinishDate);
+      selectedDate = new Date(selectedDate.getTime() + oneDay);
+    } while (selectedDate <= selectedFinishDate);
+  }
+
+  // now, add a new to the TABLE.
+  function addRow(date, min, max) {
+    // Formatta la data nel formato YYYY-MM-DD
+    var formattedDate = formatDateInput(date);
+    var formattedMinDate = formatDateInput(min);
+    var formattedMaxDate = formatDateInput(max);
+    var formattedMinHour = formatHourInput(min);
+    var formattedMaxHour = formatHourInput(max);
+
+    var empTab = document.getElementById('empTable');
+    var rowCnt = empTab.rows.length;   // table row count.
+    var tr = empTab.insertRow(rowCnt); // the table row.
+
+    for (let c = 0; c < arrHead.length; c++) {
+      var td = document.createElement('td'); // table definition.
+      td = tr.insertCell(c);
+
+      if (c == 0) {      // the first column.
+        // add a button in every new row in the first column.
+        var button = document.createElement('input');
+
+        // set input attributes.
+        button.setAttribute('type', 'button');
+        button.setAttribute('value', '+');
+        button.setAttribute('title', translate('addEventPage.addDateBottom'));
+
+        // add button's 'onclick' event.
+        button.setAttribute('onclick', 'addRowFromButton(this)');
+
+        td.appendChild(button);
+      }
+      if (c == 1) {      // the second column.
+        // add a button in every new row in the first column.
+        var button = document.createElement('input');
+
+        // set input attributes.
+        button.setAttribute('type', 'button');
+        button.setAttribute('value', '-');
+        button.setAttribute('title', translate('addEventPage.removeDateBottom'));
+
+        // add button's 'onclick' event.
+        button.setAttribute('onclick', 'removeRow(this)');
+
+        td.appendChild(button);
+      }
+      else if (c == 2) { // the third column.
+        //Create and append select list
+
+        var selectDate = document.createElement("input");
+        selectDate.setAttribute('type', 'date');
+        selectDate.setAttribute('name', 'appt-time');
+        // selectDate.setAttribute('disabled', 'true');
+        selectDate.setAttribute('class', 'selectDate');
+        selectDate.setAttribute('min', formattedMinDate);
+        selectDate.setAttribute('max', formattedMaxDate);
+        selectDate.setAttribute('value', formattedDate);
+        td.appendChild(selectDate);
+      }
+      else if (c == 3) { // the fourth column.
+        //Create and append select list
+
+        var selectHour = document.createElement("input");
+        selectHour.setAttribute('type', 'time');
+        selectHour.setAttribute('name', 'appt-time');
+        selectHour.setAttribute('class', 'selectStartHour');
+        selectHour.setAttribute('min', formattedMinHour);
+        selectHour.setAttribute('max', formattedMaxHour);
+        selectHour.setAttribute('value', formattedMinHour);
+        td.appendChild(selectHour);
+
+        selectHour.addEventListener('change', function (event) {
+          var selectedValue = event.target.value;
+          var minValue = event.target.min;
+          var maxValue = event.target.max;
+
+          // Controlla se il valore selezionato è al di fuori dell'intervallo e correggilo se necessario
+          if (selectedValue < minValue) {
+            event.target.value = minValue;
+          } else if (selectedValue > maxValue) {
+            event.target.value = maxValue;
+          }
+        });
+
+      }
+      else if (c == 4) { // the fifth column.
+        //Create and append select list
+
+        var selectHour = document.createElement("input");
+        selectHour.setAttribute('type', 'time');
+        selectHour.setAttribute('name', 'appt-time');
+        selectHour.setAttribute('class', 'selectEndHour');
+        selectHour.setAttribute('min', formattedMinHour);
+        selectHour.setAttribute('max', formattedMaxHour);
+        selectHour.setAttribute('value', formattedMaxHour);
+        td.appendChild(selectHour);
+
+        selectHour.addEventListener('change', function (event) {
+          var selectedValue = event.target.value;
+          var minValue = event.target.min;
+          var maxValue = event.target.max;
+
+          // Controlla se il valore selezionato è al di fuori dell'intervallo e correggilo se necessario
+          if (selectedValue < minValue) {
+            event.target.value = minValue;
+          } else if (selectedValue > maxValue) {
+            event.target.value = maxValue;
+          }
+        });
+
+      }
+      else if (c == 5) { // the last column
+        //Create array of options to be added
+        //var array = { "P": "Preallestimento", "A": "Allestimento", "E": "Evento", "D": "Disallestimento", "L": "Lavoro" };
+
+        var stringa = translate('addEventPage.stringaArray');
+
+        // Dividiamo la stringa in un array separandola per le virgole
+        var pairs = stringa.split(',');
+
+        // Creiamo l'oggetto partendo dall'array
+        var array = {};
+        for (let i = 0; i < pairs.length; i += 2) {
+          array[pairs[i]] = pairs[i + 1];
+        }
+
+        //Create and append select list
+        var selectList = document.createElement("select");
+        selectList.id = "mySelect";
+        selectList.setAttribute('type', 'select');
+        td.appendChild(selectList);
+
+        //Create and append the options
+        for (let key in array) {
+          var option = document.createElement("option");
+          option.value = key;
+          option.text = array[key];
+          selectList.appendChild(option);
+        }
+      }
+    }
+  }
+
+  // funzione per aggiungere una riga quando si fa clic sul pulsante "+"
+  function addRowFromButton(button) {
+    var row = button.parentNode.parentNode; // ottieni la riga corrente
+    var dateInput = row.querySelector("input[type='date']").value; // ottieni il valore della data
+
+    var empTab = document.getElementById('empTable');
+    var rowCnt = row.rowIndex + 1; // ottieni l'indice della riga selezionata e aggiungi 1 per inserire sotto
+
+    // Formatta la data nel formato YYYY-MM-DD
+    var date = new Date(dateInput);
+    var first = document.getElementById("startDate").value;
+    var last = document.getElementById("finishDate").value;
+    var min = new Date(first);
+    var max = new Date(last);
+    var formattedDate = formatDateInput(date);
+    var formattedMinDate = formatDateInput(min);
+    var formattedMaxDate = formatDateInput(max);
+    var formattedMinHour = formatHourInput(min);
+    var formattedMaxHour = formatHourInput(max);
+
+    // inserisci la nuova riga sotto la riga selezionata
+    var tr = empTab.insertRow(rowCnt);
+
+    // inserisci le celle della nuova riga
+    for (let c = 0; c < arrHead.length; c++) {
+      var td = document.createElement('td'); // table definition.
+      td = tr.insertCell(c);
+
+      if (c == 0) {      // the first column.
+        // add a button in every new row in the first column.
+        var button = document.createElement('input');
+
+        // set input attributes.
+        button.setAttribute('type', 'button');
+        button.setAttribute('value', '+');
+        button.setAttribute('title', translate('addEventPage.addDateBottom'));
+
+        // add button's 'onclick' event.
+        button.setAttribute('onclick', 'addRowFromButton(this)');
+
+        td.appendChild(button);
+      }
+      if (c == 1) {      // the second column.
+        // add a button in every new row in the first column.
+        var button = document.createElement('input');
+
+        // set input attributes.
+        button.setAttribute('type', 'button');
+        button.setAttribute('value', '-');
+        button.setAttribute('title', translate('addEventPage.removeDateBottom'));
+
+        // add button's 'onclick' event.
+        button.setAttribute('onclick', 'removeRow(this)');
+
+        td.appendChild(button);
+      }
+      else if (c == 2) { // the third column.
+        //Create and append select list
+
+        var selectDate = document.createElement("input");
+        selectDate.setAttribute('type', 'date');
+        selectDate.setAttribute('name', 'appt-time');
+        //selectDate.setAttribute('disabled', 'true');
+        selectDate.setAttribute('class', 'selectDate');
+        selectDate.setAttribute('min', formattedMinDate);
+        selectDate.setAttribute('max', formattedMaxDate);
+        selectDate.setAttribute('value', formattedDate);
+        td.appendChild(selectDate);
+      }
+      else if (c == 3) { // the fourth column.
+        //Create and append select list
+
+        var selectHour = document.createElement("input");
+        selectHour.setAttribute('type', 'time');
+        selectHour.setAttribute('name', 'appt-time');
+        selectHour.setAttribute('class', 'selectStartHour');
+        selectHour.setAttribute('min', formattedMinHour);
+        selectHour.setAttribute('max', formattedMaxHour);
+        selectHour.setAttribute('value', formattedMinHour);
+        td.appendChild(selectHour);
+
+        selectHour.addEventListener('change', function (event) {
+          var selectedValue = event.target.value;
+          var minValue = event.target.min;
+          var maxValue = event.target.max;
+
+          // Controlla se il valore selezionato è al di fuori dell'intervallo e correggilo se necessario
+          if (selectedValue < minValue) {
+            event.target.value = minValue;
+          } else if (selectedValue > maxValue) {
+            event.target.value = maxValue;
+          }
+        });
+
+      }
+      else if (c == 4) { // the fifth column.
+        //Create and append select list
+
+        var selectHour = document.createElement("input");
+        selectHour.setAttribute('type', 'time');
+        selectHour.setAttribute('name', 'appt-time');
+        selectHour.setAttribute('class', 'selectEndHour');
+        selectHour.setAttribute('min', formattedMinHour);
+        selectHour.setAttribute('max', formattedMaxHour);
+        selectHour.setAttribute('value', formattedMaxHour);
+        td.appendChild(selectHour);
+
+        selectHour.addEventListener('change', function (event) {
+          var selectedValue = event.target.value;
+          var minValue = event.target.min;
+          var maxValue = event.target.max;
+
+          // Controlla se il valore selezionato è al di fuori dell'intervallo e correggilo se necessario
+          if (selectedValue < minValue) {
+            event.target.value = minValue;
+          } else if (selectedValue > maxValue) {
+            event.target.value = maxValue;
+          }
+        });
+
+      }
+      else if (c == 5) { // the last column
+        //Create array of options to be added
+        //var array = { "P": "Preallestimento", "A": "Allestimento", "E": "Evento", "D": "Disallestimento", "L": "Lavoro" };
+
+        var stringa = translate('addEventPage.stringaArray');
+
+        // Dividiamo la stringa in un array separandola per le virgole
+        var pairs = stringa.split(',');
+
+        // Creiamo l'oggetto partendo dall'array
+        var array = {};
+        for (let i = 0; i < pairs.length; i += 2) {
+          array[pairs[i]] = pairs[i + 1];
+        }
+
+        //Create and append select list
+        var selectList = document.createElement("select");
+        selectList.id = "mySelect";
+        selectList.setAttribute('type', 'select');
+        td.appendChild(selectList);
+
+        //Create and append the options
+        for (let key in array) {
+          var option = document.createElement("option");
+          option.value = key;
+          option.text = array[key];
+          selectList.appendChild(option);
+        }
+      }
+    }
+  }
+
+
+  // delete TABLE row function.
+  function removeRow(oButton) {
+    var empTab = document.getElementById('empTable');
+    empTab.deleteRow(oButton.parentNode.parentNode.rowIndex); // button -> td -> tr.
+  }
+
+  // result = combineDateTime(date, startTime, endTime) --> result.startDateTime e result.endDateTime
+  function combineDateTime(date, startTime, endTime) {
+    // Converti la data in un oggetto Date
+    let dateParts = date.split("-");
+    let year = parseInt(dateParts[0], 10);
+    let month = parseInt(dateParts[1], 10) - 1; // i mesi in JavaScript vanno da 0 (gennaio) a 11 (dicembre)
+    let day = parseInt(dateParts[2], 10);
+
+    // Funzione per combinare data e ora in un oggetto Date
+    function getDateTime(date, time) {
+      let timeParts = time.split(":");
+      let hours = parseInt(timeParts[0], 10);
+      let minutes = parseInt(timeParts[1], 10);
+      return new Date(year, month, day, hours, minutes);
+    }
+    //console.log('date è '+date+ ' time è '+startTime);
+
+    let startDateTime = getDateTime(date, startTime);
+    let endDateTime = getDateTime(date, endTime);
+
+    // Se l'ora finale è minore o uguale all'ora iniziale, aggiungi un giorno
+    if (endDateTime <= startDateTime) {
+      endDateTime.setDate(endDateTime.getDate() + 1);
+    }
+
+    return {
+      startDateTime: startDateTime,
+      endDateTime: endDateTime
+    };
+  }
+
+
+  function removeCommas(text) {
+    // Replace all commas with an empty string
+    return text.replace(/,/g, "");
+  }
+  function multiSelect2string(object) {
+    //htmlString = document.getElementById(selectorID);
+    //console.log(object.selectedOptions);
+    if (object.selectedOptions.length > 0) {
+      selectValues = Array.from(object.selectedOptions, (option) => option.value);
+      //result = selectValues.join(', ');
+      result = selectValues;
+    } else {
+      result = [];
+    }
+    return result
+  }
+
+  function randomID(length) {
+    var result = '';
+    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+  }
+  // console.log(randomID(2)); --> C0
+
+  function submit() {
+    var myTab = document.getElementById('empTable');
+    //var arrValues = new Array();
+    var finalArray = new Array();
+    //var text = "";
+
+    // loop through each row of the table.
+    for (row = 1; row < myTab.rows.length; row++) {
+      // loop through each cell in a row.
+      for (c = 0; c < myTab.rows[row].cells.length; c++) {
+        var element = myTab.rows.item(row).cells[c];
+        if (element.childNodes[0].getAttribute('class') == 'selectDate') {
+          var data = element.childNodes[0].value;
+        }
+        else if (element.childNodes[0].getAttribute('class') == 'selectStartHour') {
+          var startHour = element.childNodes[0].value;
+        }
+        else if (element.childNodes[0].getAttribute('class') == 'selectEndHour') {
+          var endHour = element.childNodes[0].value;
+        }
+        else if (element.childNodes[0].getAttribute('type') == 'select') {
+          if (element.childNodes[0].value.length != 0) {
+            var type = element.childNodes[0].value;
+          }
+          //else { text = text + ', '; }
+        }
+      }
+      result = combineDateTime(data, startHour, endHour) // --> result.startDateTime e result.endDateTime
+      finalArray.push([result.startDateTime, result.endDateTime, type]);
+    }
+
+
+    // Populate the standard variabbles 
+    var name = removeCommas(document.getElementById("name").value);
+    var opz = document.getElementById("opz").value;
+    var opzExp = document.getElementById("opzExp").value;
+    var public = document.getElementById("public").value;
+    var quartiere = multiSelect2string(document.getElementById('quartiere'));
+    var congress = multiSelect2string(document.getElementById('congress'));
+    var ingressi = multiSelect2string(document.getElementById('ingressi'));
+    var aree = multiSelect2string(document.getElementById('aree'));
+    var parcheggi = multiSelect2string(document.getElementById('parcheggi'));
+    var refCom = document.getElementById("refCom").value;
+    var refOp = document.getElementById("refOp").value;
+    var typeEv = document.getElementById("typeEv").value;
+    var note = removeCommas(document.getElementById("note").value);
+    var org = removeCommas(document.getElementById("org").value);
+    var allestitore = document.getElementById("allestitore").value;
+    var catering = document.getElementById("catering").value;
+    var code = document.getElementById("code").value;
+    var vvf = document.getElementById("vvf").value;
+    var cri = document.getElementById("cri").value;
+    var color = document.getElementById("color").value;
+    var eventID = randomID(8);
+
+    // Check presence of one E or L in type and Create event array --> calendar(title, start Time, end Time, description, location, type, ref, eventID ()--> colorId, userEmail))
+    var listEvents = new Array();
+    var checkEvent = 0;
+    for (let i = 0; i < finalArray.length; i++) {
+      if ((finalArray[i][2] == 'E') || (finalArray[i][2] == 'L')) {
+        checkEvent = 1;
+      }
+      var title = (opz == 'SI' ? 'Opz. ' + name : (opz == 'OFF' ? 'Off. ' + name : name)) + ' ' + finalArray[i][2];
+      var description = (note.length > 0 ? note : '') + ' ' + (allestitore.length > 0 ? 'all=' + allestitore : '') + (catering.length > 0 ? ' feed=' + catering : '') + (code.length > 0 ? ' code=' + code : '') + ' id=' + eventID + ' typeEv=' + typeEv + ' org=' + org + ' refCom=' + refCom + ' refOp=' + refOp + ' open=' + public + ' ' + ((finalArray[i][2] == 'E') ? ' vvf=' + vvf + ' cri=' + cri + ' color=' + color : '') + (opzExp.length > 0 ? ' opzExp=' + opzExp : '');
+      if (finalArray[i][2] == 'P') {
+        var locationArray = quartiere.concat(congress, aree);
+      } else {
+        var locationArray = (((finalArray[i][2] == 'E') || (finalArray[i][2] == 'L')) ? quartiere.concat(congress, ingressi, aree, parcheggi) : quartiere.concat(congress, ingressi, aree));
+      }
+      var location = locationArray.join('| ');
+      listEvents.push([title, finalArray[i][0], finalArray[i][1], description, location, finalArray[i][2], refOp, eventID]);
+
+
+    }
+    if (checkEvent) {
+      //alert(listEvents)
+      document.getElementById('output').innerHTML = listEvents;
+      return listEvents;
+    } else {
+      alert(<?= translate('addEventPage.addOneEventDay') ?>);
+    }
+
+  }
+
+</script>
+
+</html>

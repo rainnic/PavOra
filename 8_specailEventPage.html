@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+
+<head>
+    <base target="_top">
+    <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+    <script>
+        // store in data the array in doGet
+        var data = <?!= JSON.stringify(dataFromServerTemplate) ?>; //Stores the data directly in the javascript code
+
+        // for multi language support
+        const translationsString = <?= JSON.stringify(translations) ?>;
+        const currentLanguage = "<?= currentLanguage ?>";
+
+        // Deserializza la stringa JSON in un oggetto JavaScript
+        const translations = JSON.parse(translationsString);
+
+        // Funzione translate
+        function translate(key, placeholders = {}) {
+            // Dividi la chiave in livelli
+            const keys = key.split('.');
+            let translation = translations[currentLanguage];
+
+            // Naviga nel dizionario
+            for (const k of keys) {
+                translation = translation?.[k];
+                if (!translation) {
+                    return key; // Se una chiave non è trovata, restituisci la chiave originale
+                }
+            }
+
+            // Sostituisci i placeholder dinamici
+            Object.keys(placeholders).forEach(placeholder => {
+                const regex = new RegExp(`\\{${placeholder}\\}`, 'g'); // Trova il placeholder
+                translation = translation.replace(regex, placeholders[placeholder]);
+            });
+            return translation;
+        }
+
+// Sposta questa funzione nel primo blocco <script> dopo la funzione translate
+document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("myForm");
+    var details = document.getElementById("detailsSection");
+    var startDate = document.getElementById("startDate");
+    var finishDate = document.getElementById("finishDate");
+
+    // Recupera le date dal localStorage
+    var storedStartDate = localStorage.getItem("startDate");
+    var storedFinishDate = localStorage.getItem("finishDate");
+
+    // Se esistono nel localStorage, popola i campi
+    if (storedStartDate) startDate.value = storedStartDate;
+    if (storedFinishDate) finishDate.value = storedFinishDate;
+
+    form.addEventListener("submit", function (event) {
+        // Controlla se entrambe le date sono presenti
+        if (!startDate.value || !finishDate.value) {
+            event.preventDefault(); // Blocca l'invio del form
+            details.open = true; // Apre il <details> per mostrare il form
+            return;
+        }
+
+        // Se entrambe le date sono presenti, esegui runFunc()
+        if (typeof runFunc === "function") {
+            runFunc();
+        }
+    });
+});
+
+function runFunc() {
+    var details = document.getElementById('filterDetails');
+    var startDate = document.getElementById('startDate');
+    var finishDate = document.getElementById('finishDate');
+
+    // Apri il details prima della validazione
+    if (details) {
+        details.open = true;
+    }
+
+    // Controlla se i campi sono vuoti
+    if (!startDate.value || !finishDate.value) {
+        console.log('Campi mancanti, apro details'); // Debug
+
+        // Focus sul primo campo vuoto
+        if (!startDate.value) {
+            startDate.focus();
+        } else {
+            finishDate.focus();
+        }
+
+        alert('Devi inserire una data di inizio e fine.');
+        return false; // Impedisce l'invio del form
+    }
+
+    var first = startDate.value;
+    var last = finishDate.value;
+    var keyword = document.getElementById("keyword").value;
+
+    // Verifica date
+    var selectedStartDate = new Date(first);
+    var selectedFinishDate = new Date(last);
+    if (selectedFinishDate < selectedStartDate) {
+        if (details) details.open = true;
+        alert(translate('alertHtml.messageDate'));
+        finishDate.value = '';
+        return false;
+    }
+
+    // Salva i dati
+    localStorage.setItem('startDate', first);
+    localStorage.setItem('finishDate', last);
+    localStorage.setItem('keyword', keyword);
+
+    var selectElementQ = document.getElementById('quartiere');
+    var selectElementC = document.getElementById('congress');
+
+    var selectedValuesQ = Array.from(selectElementQ.selectedOptions, option => option.value);
+    var selectedValuesC = Array.from(selectElementC.selectedOptions, option => option.value);
+
+    var selectedStruct = [...selectedValuesQ, ...selectedValuesC].join(', ');
+    localStorage.setItem('selectedStruct', selectedStruct);
+
+    // Gestione del bottone
+    const button = document.getElementById('submitButton');
+    button.disabled = true;
+    button.innerText = translate('viewCalendarPage.waitTr');
+
+    setTimeout(() => {
+        button.disabled = false;
+        button.innerText = translate('viewCalendarPage.goUpdateTr');
+    }, 20000);
+
+    localStorage.setItem('lastUpdate', Date.now());
+    checkLastUpdate();
+
+    google.script.run.updateTimeUser();
+    google.script.run.salvaDatiInUserProperties(first, last, keyword, selectedStruct);
+    google.script.run.showMonths(first, last, selectedStruct, keyword, 'dateOK');
+}
+
+        // sample usage
+function initialize() {
+    var first = localStorage.getItem('startDate') || "";
+    var last = localStorage.getItem('finishDate') || "";
+    var keyword = localStorage.getItem('keyword') || "";
+    var selectedStruct = localStorage.getItem('selectedStruct') || "";
+
+    // Imposta i valori solo se esistono
+    document.getElementById('startDate').value = first;
+    document.getElementById('finishDate').value = last;
+    document.getElementById('keyword').value = keyword;
+
+    // Ripristina i valori delle select multiple
+    if (selectedStruct) {
+        var selectedValues = selectedStruct.split(', '); // Converti stringa in array
+        document.querySelectorAll('#quartiere option, #congress option').forEach(option => {
+            option.selected = selectedValues.includes(option.value);
+        });
+    } else {
+        // Se localStorage è vuoto, deseleziona tutti
+        document.querySelectorAll('#quartiere option, #congress option').forEach(option => {
+            option.selected = false;
+        });
+    }
+
+    checkLastUpdate(); // Mantieni questa funzione se è necessaria
+}
+        // use onload or use jquery to call your initialization after the document loads
+        window.onload = initialize;
+
+    </script>
+</head>
+
+<script>
+
+// **Funzione per controllare l'ultimo aggiornamento**
+function checkLastUpdate() {
+    var lastUpdate = localStorage.getItem('lastUpdate');
+    var messageDiv = document.getElementById('updateMessage');
+
+    if (lastUpdate) {
+        var now = Date.now();
+        var elapsedTime = now - parseInt(lastUpdate, 10);
+
+        // Se è passato più di un'ora (3600000 millisecondi), mostra il messaggio
+        if (elapsedTime > 3600000) {
+            messageDiv.style.display = 'block';
+        } else {
+            messageDiv.style.display = 'none';
+        }
+    }
+}
+
+// **Avvia il controllo ogni 60 secondi (60000 ms)**
+setInterval(checkLastUpdate, 60000);
+checkLastUpdate(); // Esegui subito il controllo al caricamento
+
+function reset() {
+    // Rimuove i dati dal localStorage
+    localStorage.removeItem('startDate');
+    localStorage.removeItem('finishDate');
+    localStorage.removeItem('keyword');
+    localStorage.removeItem('selectedStruct');
+
+    // Resetta il form
+    document.getElementById("myForm").reset();
+
+    // Forza il reset dei valori degli input (alcuni browser mantengono il valore)
+    document.getElementById("startDate").value = "";
+    document.getElementById("finishDate").value = "";
+    document.getElementById("keyword").value = "";
+
+    // Rimuove la selezione dai dropdown multipli
+    document.querySelectorAll("#quartiere option, #congress option").forEach(option => {
+        option.selected = false;
+    });
+
+    // Nasconde eventuali messaggi
+    document.getElementById("message").style.display = "none";
+}
+</script>
+
+<body class="special-page">
+    <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+    <!-- <h3 class="align ">Visualizza gli eventi a calendario</h3> -->
+
+    <form id="myForm">
+
+<details id="detailsSection">
+    <summary><?= translate('specialEvent.filter') ?></summary>
+
+        <div class="row mb-3">
+            <label for="startDate" class="col-sm-2 col-form-label">
+                <?= translate('viewCalendarPage.startDateTr') ?>
+            </label>
+            <div class="col-sm-10">
+                <input type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="startDate" id="startDate" placeholder="Inizio">
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="finishDate" class="col-sm-2 col-form-label">
+                <?= translate('viewCalendarPage.endDateTr') ?>
+            </label>
+
+            <div class="col-sm-10">
+                <input type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="finishDate" id="finishDate" placeholder="Fine">
+            </div>
+        </div>
+        <h6>
+            <?= translate('viewCalendarPage.findStuctTr') ?>
+        </h6>
+        <div class="row mb-3">
+            <div class="col-sm-10">
+
+<select style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;" id="empty">
+</select>
+                <label>
+                    <?= translate('viewCalendarPage.sideQTr') ?>
+                </label><br />
+                <select style="width: 100%;" id="quartiere" multiple multiselect-search="true"
+                    multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                </select>
+                <label>
+                    <?= translate('viewCalendarPage.sideCCTr') ?>
+                </label><br />
+                <select style="width: 100%;" id="congress" multiple multiselect-search="true"
+                    multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                </select>
+
+            </div>
+        </div>
+        <h6>
+            <?= translate('viewCalendarPage.findWordTr') ?>
+        </h6>
+        <div class="row mb-3">
+            <!-- <label for="org" class="col-sm-2 col-form-label">Organizzatore</label> -->
+            <div class="col-sm-10">
+                <input type="text" class="form-control form-control-sm" value="" name="keyword" id="keyword"
+                    placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+            </div>
+        </div>
+
+</details>
+
+        <div class="button-container">
+            <button id="submitButton" type="submit" class="align">
+                <?= translate('viewCalendarPage.goUpdateTr') ?>
+            </button>
+            <button onclick="reset()"><?= translate('viewCalendarPage.delAllFormTr') ?></button>
+            <!-- <input type="button" value="<?= translate('viewCalendarPage.delAllFormTr') ?>" onClick="reset()" /> -->
+        </div>
+<div id="updateMessage" style="display: none; color: red; font-weight: bold; margin-top: 2px;">
+    ⚠️ <?= translate('specialEvent.tip') ?>
+</div>        
+    </form>
+    <h6 id="titleHead"><?= translate('specialEvent.info') ?></h6>
+    <div class="button-container">
+      <button id="newEvent" onClick="newEvent()"><?= translate('viewList.newEvent') ?></button>
+      <button id="aggiornaSpec"onClick="updateSpecificEvent()"><?= translate('viewList.upSpec') ?></button>
+      <button id="cancella" onClick="deleteEvent()"><?= translate('viewList.delEvent') ?></button>
+    </div>
+
+    <script>
+// Recupera i valori selezionati precedentemente e li converte in un array pulito
+var selectedStruct = localStorage.getItem('selectedStruct') || "";
+var selectedValues = selectedStruct.split(",").map(s => s.trim());
+
+// **Carica opzioni per "quartiere"**
+var quartiere = document.getElementById("quartiere");
+for (let i = 0; i < data.length; i++) {
+    if (data[i][2] == 1) {
+        var option = document.createElement("option");
+        option.value = data[i][0];
+        option.text = data[i][1];
+
+        // Se il valore è nell'array selectedValues, impostalo come selezionato
+        if (selectedValues.includes(data[i][0])) {
+            option.selected = true;
+        }
+
+        quartiere.appendChild(option);
+    }
+}
+
+// **Carica opzioni per "congress"**
+var congress = document.getElementById("congress"); // Corretto errore di ridefinizione
+for (let i = 0; i < data.length; i++) {
+    if (data[i][2] == 2) {
+        var option = document.createElement("option");
+        option.value = data[i][0];
+        option.text = data[i][1];
+
+        // Se il valore è nell'array selectedValues, impostalo come selezionato
+        if (selectedValues.includes(data[i][0])) {
+            option.selected = true;
+        }
+
+        congress.appendChild(option);
+    }
+}
+
+      function newEvent() {
+
+          const buttonne = document.getElementById('newEvent');
+          buttonne.disabled = true;
+          buttonne.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            buttonne.disabled = false;
+            buttonne.innerText = translate('viewList.newEvent');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        //loadNote('newEvent');
+        google.script.run.specialNewEvent()
+
+      }
+
+      function updateSpecificEvent() {
+        var first = document.getElementById("startDate").value;
+        var last = document.getElementById("finishDate").value;
+          const buttonse = document.getElementById('aggiornaSpec');
+          buttonse.disabled = true;
+          buttonse.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            buttonse.disabled = false;
+            buttonse.innerText = translate('viewList.upSpec');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        //loadNote('updateSpecificEvent');
+        google.script.run.specialUpdateEvent(first, last)
+      }
+
+      function deleteEvent() {
+        var first = document.getElementById("startDate").value;
+        var last = document.getElementById("finishDate").value;  
+          const buttonde = document.getElementById('cancella');
+          buttonde.disabled = true;
+          buttonde.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            buttonde.disabled = false;
+            buttonde.innerText = translate('viewList.delEvent');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        //loadNote('deleteEvent');
+        google.script.run.specialDeleteEvent(first, last)
+      }
+
+    </script>
+
+</body>
+
+</html>

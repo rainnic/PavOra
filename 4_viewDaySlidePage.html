@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+<head>
+    <base target="_top">
+    <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+    <script>
+        // store in data the array in doGet
+        var data = <?!= JSON.stringify(dataFromServerTemplate) ?>; //Stores the data directly in the javascript code
+
+    // for multi language support
+    const translationsString = <?= JSON.stringify(translations) ?>;
+    const currentLanguage = "<?= currentLanguage ?>";
+
+    // Deserializza la stringa JSON in un oggetto JavaScript
+    const translations = JSON.parse(translationsString);
+
+    // Funzione translate
+    function translate(key, placeholders = {}) {
+      // Dividi la chiave in livelli
+      const keys = key.split('.');
+      let translation = translations[currentLanguage];
+
+      // Naviga nel dizionario
+      for (const k of keys) {
+        translation = translation?.[k];
+        if (!translation) {
+          return key; // Se una chiave non è trovata, restituisci la chiave originale
+        }
+      }
+
+      // Sostituisci i placeholder dinamici
+      Object.keys(placeholders).forEach(placeholder => {
+        const regex = new RegExp(`\\{${placeholder}\\}`, 'g'); // Trova il placeholder
+        translation = translation.replace(regex, placeholders[placeholder]);
+      });
+      return translation;
+    }
+
+        // sample usage
+        function initialize() {
+        }
+        // use onload or use jquery to call your initialization after the document loads
+        window.onload = initialize;
+
+    </script>
+</head>
+
+<script>
+      // Function to clear localStorage
+    function clearLocalStorage() {
+      localStorage.removeItem('startDate');
+      localStorage.removeItem('finishDate');
+    }
+    
+    function runFunc() {
+        var first = document.getElementById("startDate").value;
+        var last = document.getElementById("finishDate").value;
+        var cosa = document.getElementById("cosa").value;
+        var keyword = document.getElementById("keyword").value;
+        var editable = document.getElementById("editable").value;        
+        var selectedStartDate = new Date(first);
+        var selectedFinishDate = new Date(last);
+        if (selectedFinishDate < selectedStartDate) {
+      alert(translate('alertHtml.messageDate'));
+      document.getElementById("finishDate").value = ''; // Resetta il valore            
+        } else if ((selectedFinishDate.getTime() - selectedStartDate.getTime())/(24 * 60 * 60 * 1000)>5) {
+      alert(translate('planPage.alertMuchDays'));
+      document.getElementById("finishDate").value = ''; // Resetta il valore      
+        } else {
+          const button = document.getElementById('submitButton');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewCalendarPage.goButtonTr');
+            //alert("Operazione completata!");
+          }, 20000);
+
+            google.script.run.createSlideAndExportToSheet(first, last, cosa, keyword, editable)
+        }
+    }
+    function reset() {
+        document.getElementById("myForm").reset();
+        document.getElementById("message").style.display = "none";
+    }   
+</script>
+
+<body class="viewer-page">
+      <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+    <!-- <h3 class="align ">Visualizza gli eventi a calendario</h3> -->
+    <h4 class="align"><?= translate('planPage.intSelPeriod') ?></h4>
+    <form id="myForm" onsubmit="runFunc()">
+        <div class="row mb-3">
+            <label for="startDate" class="col-sm-2 col-form-label"><?= translate('viewCalendarPage.startDateTr') ?></label>
+            <div class="col-sm-10">
+                <input required type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="startDate" id="startDate" placeholder="Inizio">
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="finishDate" class="col-sm-2 col-form-label"><?= translate('viewCalendarPage.endDateTr') ?></label>
+
+            <div class="col-sm-10">
+                <input required type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="finishDate" id="finishDate" placeholder="Fine">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+        <label for="cosa" class="col-sm-2 col-form-label"><?= translate('planPage.whatView') ?></label>
+        <div class="col-sm-10">
+          <select required class="form-control form-control-lg" name="cosa" id="cosa" onchange="toggleUpdateButton()">
+            <option disabled selected value><?= translate('addEventPage.chooseList') ?></option>
+            <option value='cc'><?= translate('addEventPage.selCcenter') ?></option>            
+            <option value='quartiere'><?= translate('addEventPage.selQcenter') ?></option>
+          </select>
+        </div>
+      </div>
+      <h6><?= translate('viewCalendarPage.findWordTr') ?></h6>
+      <div class="row mb-3">
+        <!-- <label for="org" class="col-sm-2 col-form-label">Organizzatore</label> -->
+        <div class="col-sm-10">
+          <input type="text" class="form-control form-control-sm" value="" name="keyword" id="keyword" placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+        </div>
+      </div>   
+
+      <div class="row mb-3">
+        <label for="editable" class="col-sm-2 col-form-label"><?= translate('planPage.editSlide') ?></label>
+        <div class="col-sm-10">
+          <select class="form-control form-control-lg" name="editable" id="editable">
+            <option selected value='NO'>NO</option>
+            <option value='SI'><?= translate('addEventPage.chooseYes') ?></option>
+          </select>
+        </div>
+      </div>
+
+        <div class="button-container">
+            <div id="message" style="display: block;"></div>
+            <button id="submitButton" type="submit" class="align"><?= translate('viewCalendarPage.goButtonTr') ?></button>
+            <button onclick="reset()"><?= translate('viewCalendarPage.delAllFormTr') ?></button>
+        </div>
+    </form>
+
+    <script>
+        // Load quartiere data[i][2]==1
+        var quartiere = document.getElementById("quartiere");
+        for (let i = 0; i < data.length; i++) {
+            var option = document.createElement("option");
+            if (data[i][2] == 1) {
+                option.value = data[i][0];
+                option.text = data[i][1];
+                quartiere.appendChild(option);
+            }
+        }
+        // Load Centro Congressi data[i][2]==2
+        var quartiere = document.getElementById("congress");
+        for (let i = 0; i < data.length; i++) {
+            var option = document.createElement("option");
+            if (data[i][2] == 2) {
+                option.value = data[i][0];
+                option.text = data[i][1];
+                congress.appendChild(option);
+            }
+        }    
+    </script>
+
+</body>
+
+</html>

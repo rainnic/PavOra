@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+<head>
+    <base target="_top">
+    <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+    <script>
+        // store in data the array in doGet
+        var data = <?!= JSON.stringify(dataFromServerTemplate) ?>; //Stores the data directly in the javascript code
+        var permission = data.pop();
+
+    // for multi language support
+    const translationsString = <?= JSON.stringify(translations) ?>;
+    const currentLanguage = "<?= currentLanguage ?>";
+
+    // Deserializza la stringa JSON in un oggetto JavaScript
+    const translations = JSON.parse(translationsString);
+
+    // Funzione translate
+    function translate(key, placeholders = {}) {
+      // Dividi la chiave in livelli
+      const keys = key.split('.');
+      let translation = translations[currentLanguage];
+
+      // Naviga nel dizionario
+      for (const k of keys) {
+        translation = translation?.[k];
+        if (!translation) {
+          return key; // Se una chiave non è trovata, restituisci la chiave originale
+        }
+      }
+
+      // Sostituisci i placeholder dinamici
+      Object.keys(placeholders).forEach(placeholder => {
+        const regex = new RegExp(`\\{${placeholder}\\}`, 'g'); // Trova il placeholder
+        translation = translation.replace(regex, placeholders[placeholder]);
+      });
+      return translation;
+    }        
+
+        // sample usage
+        function initialize() {
+        }
+        // use onload or use jquery to call your initialization after the document loads
+        window.onload = initialize;
+
+    </script>
+</head>
+
+<script>
+      // Function to clear localStorage
+    function clearLocalStorage() {
+      localStorage.removeItem('startDate');
+      localStorage.removeItem('finishDate');
+    }
+    
+    function runFunc() {
+        var first = document.getElementById("startDate").value;
+        var last = document.getElementById("finishDate").value;
+        var selectElementCosa = document.getElementById("cosa");
+        var keyword = document.getElementById("keyword").value;
+        var come = document.getElementById("come").value;          
+
+        var selectedValuesCosa = Array.from(selectElementCosa.selectedOptions, (option) => option.value);
+        var cosa = selectedValuesCosa.join(',');
+
+        var selectElementQ = document.getElementById('quartiere');
+        var selectElementC = document.getElementById('congress');
+        
+        if ((selectElementQ.selectedOptions.length > 0) && ((selectElementC.selectedOptions.length > 0))) {
+            var selectedValuesQ = Array.from(selectElementQ.selectedOptions, (option) => option.value);
+            var selectedValuesC = Array.from(selectElementC.selectedOptions, (option) => option.value);
+            var selectedStruct = selectedValuesQ.join(', ') + ', ' + selectedValuesC.join(', ');
+        } else if ((selectElementQ.selectedOptions.length > 0) && ((selectElementC.selectedOptions.length == 0))) {
+            var selectedValuesQ = Array.from(selectElementQ.selectedOptions, (option) => option.value);
+            var selectedStruct = selectedValuesQ.join(', ');
+        } else if ((selectElementQ.selectedOptions.length == 0) && ((selectElementC.selectedOptions.length > 0))) {
+            var selectedValuesC = Array.from(selectElementC.selectedOptions, (option) => option.value);
+            var selectedStruct = selectedValuesC.join(', ');
+        } else {
+            var selectedStruct = '';
+        }
+
+        var selectedStartDate = new Date(first);
+        var selectedFinishDate = new Date(last);
+        if (selectedFinishDate < selectedStartDate) {
+      alert(translate('alertHtml.messageDate'));
+      document.getElementById("finishDate").value = ''; // Resetta il valore
+        } else {
+
+          const button = document.getElementById('submitButton');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewCalendarPage.goButtonTr');
+            //alert("Operazione completata!");
+          }, 20000);
+
+            google.script.run.createListEvent(first, last, cosa, selectedStruct, keyword, come)
+        }
+    }
+    function reset() {
+        document.getElementById("myForm").reset();
+        document.getElementById("message").style.display = "none";
+    }   
+</script>
+
+<body class="viewer-page">
+      <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+        <h4 class="align"><?= translate('viewCalendarPage.periodTr') ?></h4>
+    <form id="myForm" onsubmit="runFunc()">
+        <div class="row mb-3">
+            <label for="startDate" class="col-sm-2 col-form-label"><?= translate('viewCalendarPage.startDateTr') ?></label>
+            <div class="col-sm-10">
+                <input required type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="startDate" id="startDate" placeholder="Inizio">
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="finishDate" class="col-sm-2 col-form-label"><?= translate('viewCalendarPage.endDateTr') ?></label>
+
+            <div class="col-sm-10">
+                <input required type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                    name="finishDate" id="finishDate" placeholder="Fine">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+        <label for="cosa" class="col-sm-2 col-form-label"><?= translate('viewList.whatSee') ?></label>
+        <div class="col-sm-10">
+          <select class="form-control form-control-lg" name="cosa" id="cosa" multiple multiselect-search="true"
+                    multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="6">
+            <!-- <option disabled selected value> -- scegli dall'elenco -- </option> -->
+            <option value='P'><?= translate('viewList.labelP') ?></option>            
+            <option value='A'><?= translate('viewList.labelA') ?></option>
+            <option selected value='E'><?= translate('viewList.labelE') ?></option>
+            <option value='D'><?= translate('viewList.labelD') ?></option>
+            <option value='L'><?= translate('viewList.labelW') ?></option>            
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <label for="come" class="col-sm-2 col-form-label"><?= translate('viewList.whichMode') ?></label>
+        <div class="col-sm-10">
+          <select class="form-control form-control-lg" name="come" id="come">
+            <option selected value='agg'><?= translate('viewList.grouped') ?></option>
+            <option value='day'><?= translate('viewList.listed') ?></option>
+          </select>
+        </div>
+      </div>
+
+        </div>
+        <h6><?= translate('planPage.whatView') ?></h6>
+        <div class="row mb-3">
+            <div class="col-sm-10">
+                <label><?= translate('addEventPage.selQcenter') ?></label><br />
+                <select style="width: 100%;" id="quartiere" multiple multiselect-search="true"
+                    multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                </select>
+                <label><?= translate('addEventPage.selCcenter') ?></label><br />
+                <select style="width: 100%;" id="congress" multiple multiselect-search="true"
+                    multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                </select>
+
+            </div>
+        </div>
+
+        <h6><?= translate('viewCalendarPage.findWordTr') ?></h6>
+      <div class="row mb-3">
+        <!-- <label for="org" class="col-sm-2 col-form-label">Organizzatore</label> -->
+        <div class="col-sm-10">
+          <input type="text" class="form-control form-control-sm" value="" name="keyword" id="keyword" placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+        </div>
+      </div>    
+
+        <div class="button-container">
+            <div id="message" style="display: block;"></div>
+            <button id="submitButton" type="submit" class="align"><?= translate('viewCalendarPage.goButtonTr') ?></button>
+            <button onclick="reset()"><?= translate('viewCalendarPage.delAllFormTr') ?></button>            
+        </div>
+    </form>
+    <div id="noteContent"></div>
+    <h6 id="titleHead" style="display: none;"><?= translate('viewList.editMenu') ?></h6>
+    <div class="button-container">
+      <button id="aggiornaDet" style="display: none;" onClick="updateDetailsEvent()"><?= translate('viewList.upGeneral') ?></button>
+      <button id="aggiornaSpec" style="display: none;" onClick="updateSpecificEvent()"><?= translate('viewList.upSpec') ?></button>
+      <button id="cancella" style="display: none;" onClick="deleteEvent()"><?= translate('viewList.delEvent') ?></button>
+    </div>
+
+    <script>
+        // Load quartiere data[i][2]==1
+        var quartiere = document.getElementById("quartiere");
+        for (var i = 0; i < data.length; i++) {
+            var option = document.createElement("option");
+            if (data[i][2] == 1) {
+                option.value = data[i][0];
+                option.text = data[i][1];
+                quartiere.appendChild(option);
+            }
+        }
+        // Load Centro Congressi data[i][2]==2
+        var quartiere = document.getElementById("congress");
+        for (let i = 0; i < data.length; i++) {
+            var option = document.createElement("option");
+            if (data[i][2] == 2) {
+                option.value = data[i][0];
+                option.text = data[i][1];
+                congress.appendChild(option);
+            }
+        }
+        
+        // Ottieni i riferimenti ai bottoni
+        const head = document.getElementById("titleHead");
+        const button1 = document.getElementById("aggiornaDet");
+        const button2 = document.getElementById("aggiornaSpec");
+        const button3 = document.getElementById("cancella");
+        // Condizione per mostrare i bottoni
+        if (permission === "writer" || permission === "admin") {
+          head.style.display = "block";
+          button1.style.display = "block";
+          button2.style.display = "block";
+          button3.style.display = "block";
+          } else {
+            // Se la permission è diversa, puoi mostrare un messaggio o eseguire altre azioni
+            console.log(translate('viewList.noPermission'));
+            }
+
+      function loadNote(what) {
+        var first = document.getElementById("startDate").value;
+        var last = document.getElementById("finishDate").value;
+          
+        google.script.run.withSuccessHandler(function(note) {
+        }).getCellListNote(what, first, last);
+
+      }
+
+      function updateDetailsEvent() {
+
+          const button = document.getElementById('aggiornaDet');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewList.upGeneral');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        loadNote('updateDetailsEvent');
+      }
+
+      function updateSpecificEvent() {
+
+          const button = document.getElementById('aggiornaSpec');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewList.upSpec');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        loadNote('updateSpecificEvent');
+      }
+
+      function deleteEvent() {
+
+          const button = document.getElementById('cancella');
+          button.disabled = true;
+          button.innerText = translate('viewCalendarPage.waitTr');
+
+          // Simula un lavoro con setTimeout
+          setTimeout(() => {
+            button.disabled = false;
+            button.innerText = translate('viewList.delEvent');
+            //alert("Operazione completata!");
+          }, 20000);
+
+        loadNote('deleteEvent');
+      }
+
+    </script>
+
+</body>
+
+</html>

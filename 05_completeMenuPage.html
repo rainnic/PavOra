@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+
+<head>
+    <base target="_top">
+    <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+    <style>
+        .button-menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+    <script>
+        // store in data the array passed from doGet
+        var permission = <?!= JSON.stringify(dataFromServerTemplate) ?>; //Stores the permission directly in the javascript code
+        // for multi language support
+        const translationsString = <?= JSON.stringify(translations) ?>;
+        const currentLanguage = "<?= currentLanguage ?>";
+
+        // Transform in an object
+        const translations = JSON.parse(translationsString);
+
+        // Translate sentence and varaible/placeholders if present inside the { }
+        function translate(key, placeholders = {}) {
+            // Split key
+            const keys = key.split('.');
+            let translation = translations[currentLanguage];
+
+            // Try to find the sentence
+            for (const k of keys) {
+                translation = translation?.[k];
+                if (!translation) {
+                    return key; // If not, set the original key
+                }
+            }
+
+            // Update the placeholders if present
+            Object.keys(placeholders).forEach(placeholder => {
+                const regex = new RegExp(`\\{${placeholder}\\}`, 'g'); // Find the placeholder
+                translation = translation.replace(regex, placeholders[placeholder]);
+            });
+            return translation;
+        }
+
+        // to store id for multilanguage support
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('addEvent').innerText = translate('sidebar.addEvent');
+        });
+
+        // sample usage
+        function initialize() {
+            generateButtons(); // Show the buttons based on user permission
+        }
+
+function generateButtons() {
+    const container = document.getElementById('buttonContainer');
+
+    function handleButtonClick(button, originalText, callback) {
+        button.innerText = translate('viewCalendarPage.waitTr'); // Cambia il testo del pulsante
+        button.disabled = true; // Disabilita il pulsante per evitare ulteriori click
+        callback(); // Chiama la funzione associata al pulsante
+        setTimeout(() => {
+            button.innerText = originalText; // Ripristina il testo originale
+            button.disabled = false; // Riabilita il pulsante
+        }, 20000); // Timeout massimo di 30 secondi
+    }
+
+    if ((permission === 'writer') || (permission === 'admin')) {
+        const specialButton = document.createElement('button');
+        specialButton.classList.add('menu-button', 'calendar-button');
+        specialButton.innerHTML = '<i class="fa-solid fa-screwdriver-wrench"></i> ' + translate('sidebar.specialEvent');
+        specialButton.onclick = function () {
+            handleButtonClick(specialButton, translate('sidebar.specialEvent'), () => {
+                google.script.run.specialEvent();
+            });
+        };
+        container.appendChild(specialButton);
+        
+
+        const editButton = document.createElement('button');
+        editButton.classList.add('menu-button', 'hall-button');
+        editButton.innerHTML = '<i class="fa-solid fa-pen"></i> ' + translate('menu.specialDailyEvent');
+        editButton.onclick = function () {
+            handleButtonClick(editButton, translate('menu.specialDailyEvent'), () => {
+                google.script.run.specialDailyEvent();
+            });
+        };
+        container.appendChild(editButton);
+    }
+
+    // Pulsanti sempre visibili
+    const viewCalendarButton = document.createElement('button');
+    viewCalendarButton.classList.add('menu-button', 'visualizza-button');
+    viewCalendarButton.innerHTML = '<i class="fa-solid fa-square-poll-horizontal"></i> ' + translate('sidebar.showEventGantt');
+    viewCalendarButton.onclick = function () {
+        handleButtonClick(viewCalendarButton, translate('sidebar.showEventGantt'), () => {
+            google.script.run.viewCalendar();
+        });
+    };
+    container.appendChild(viewCalendarButton);
+
+    const viewRoomButton = document.createElement('button');
+    viewRoomButton.classList.add('menu-button', 'visualizza-button');
+    viewRoomButton.innerHTML = '<i class="fa-solid fa-square-poll-horizontal"></i> ' + translate('sidebar.showDailyEvent');
+    viewRoomButton.onclick = function () {
+        handleButtonClick(viewRoomButton, translate('sidebar.showDailyEvent'), () => {
+            google.script.run.viewMSRData();
+        });
+    };
+    container.appendChild(viewRoomButton);
+
+    const viewPlanButton = document.createElement('button');
+    viewPlanButton.classList.add('menu-button', 'visualizza-button');
+    viewPlanButton.innerHTML = '<i class="fa-solid fa-map-location-dot"></i> ' + translate('sidebar.showPlanEvent');
+    viewPlanButton.onclick = function () {
+        handleButtonClick(viewPlanButton, translate('sidebar.showPlanEvent'), () => {
+            google.script.run.viewDailyCalendar();
+        });
+    };
+    container.appendChild(viewPlanButton);
+
+    const viewListButton = document.createElement('button');
+    viewListButton.classList.add('menu-button', 'visualizza-button');
+    viewListButton.innerHTML = '<i class="fa-solid fa-table-list"></i> ' + translate('sidebar.showReportEvent');
+    viewListButton.onclick = function () {
+        handleButtonClick(viewListButton, translate('sidebar.showReportEvent'), () => {
+            google.script.run.viewListCalendar();
+        });
+    };
+    container.appendChild(viewListButton);
+}
+        // use onload or use jquery to call your initialization after the document loads
+        window.onload = initialize;
+    </script>
+</head>
+
+<body>
+    <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+    <!-- <h4 class="align">Seleziona cosa vuoi fare:</h4> -->
+    <div class="button-menu-container" id="buttonContainer">
+        <!-- I bottoni verranno generati qui -->
+    </div>
+</body>
+
+</html>

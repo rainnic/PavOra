@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <div class="button-top-container">
+        <!-- Bottone Pagina Iniziale -->
+        <p id="homeButton" class="custom-top-button"><i class="fa-solid fa-house fa-2x"></i></p>
+
+        <!-- Bottone Esci fa-solid fa-person-through-window fa-2x cambiato in dynamic insertion menu -->
+        <p id="killButton" class="custom-top-button"><i class="fa-solid fa-screwdriver-wrench fa-2x"></i></p>
+
+        <!-- Bottone salva XLSX -->
+        <p id="xlsxButton" class="custom-bottom-button"><i class="fa-solid fa-file-text"> <span id="buttonText"></span></i></p>
+
+    <!-- Area per il link di download -->
+<div id="downloadLink" style="display:none;"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+document.getElementById('buttonText').textContent = translate('menu.saveXls');
+        });
+
+        // Funzione per il bottone "Chiudi"
+        document.getElementById('killButton').onclick = function() {
+            google.script.run.specialEvent();
+        };
+
+        // Funzione per il bottone "Pagina Iniziale"
+        document.getElementById('homeButton').onclick = function() {
+        google.script.run.completeMenu();
+        };
+
+  // Funzione per il bottone "Salva in Excel"
+  /*
+  document.getElementById('xlsxButton').onclick = function() {
+    google.script.run
+      .withSuccessHandler(function(downloadLink) {
+        // Crea un link cliccabile per scaricare il file
+                    const linkElement = document.getElementById('downloadLink');
+                    linkElement.style.display = 'block';
+                    linkElement.innerHTML = `<a href="${downloadLink}" target="_blank">Clicca qui per scaricare il file XLSX</a>`;
+      })
+      .withFailureHandler(function(error) {
+        alert("Errore durante l'esportazione: " + error.message);
+      })
+      .exportActiveSheetToXlsx();
+  };
+  */
+  document.getElementById('xlsxButton').onclick = function () {
+    // Cambia il testo del pulsante in "ATTENDI"
+    const buttonText = document.getElementById('buttonText');
+    buttonText.textContent = translate('viewCalendarPage.waitTr');
+    
+    // Disabilita temporaneamente il pulsante
+    this.style.pointerEvents = "none";
+
+    // Esegui la funzione GAS
+    google.script.run
+      .withSuccessHandler(function (downloadLink) {
+        // Ripristina il testo del pulsante
+        buttonText.textContent = translate('menu.saveXls');
+        document.getElementById('xlsxButton').style.pointerEvents = "auto";
+
+        // Crea un link cliccabile per scaricare il file
+        const linkElement = document.getElementById('downloadLink');
+        linkElement.style.display = 'block';
+        linkElement.innerHTML = `<a href="${downloadLink}" target="_blank" class="custom-bottom-button">${translate('menu.downXls')}</a>`;
+
+        // Assegna l'evento clic subito dopo aver generato il link
+        linkElement.querySelector('a').onclick = function () {
+          linkElement.style.display = 'none'; // Nascondi il link
+        };
+
+      })
+      .withFailureHandler(function (error) {
+        // Ripristina il testo del pulsante in caso di errore
+        buttonText.textContent = "SALVA IN EXCEL";
+        document.getElementById('xlsxButton').style.pointerEvents = "auto";
+        alert(translate('errorMessage.alert') + error.message);
+      })
+      .exportActiveSheetToXlsx();
+  };
+
+    </script>
+
+  </body>
+</html>
