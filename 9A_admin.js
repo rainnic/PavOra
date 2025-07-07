@@ -84,7 +84,7 @@ const PERMISSIONS = {
 class UserPermissionsManager {
   constructor() {
     this.ui = SpreadsheetApp.getUi();
-    this.currentUser = Session.getEffectiveUser().getEmail();
+    this.currentUser = getAliasEmail(Session.getEffectiveUser().getEmail());
     this.users = users();
     this.resources = this.initializeResources();
   }
@@ -201,7 +201,7 @@ class UserPermissionsManager {
    */
   grantUserAccess(email, role) {
     const actions = [];
-    
+    email = getRealEmail(email);
     // Gestione accesso calendario
     const calendarResult = this.manageCalendarAccess(email);
     if (calendarResult) actions.push(calendarResult);
@@ -218,7 +218,7 @@ class UserPermissionsManager {
    */
   removeUserAccess(email) {
     const actions = [];
-    
+    email = getRealEmail(email);
     // Rimuove accesso calendario
     const calendarResult = this.removeCalendarAccess(email);
     if (calendarResult) actions.push(calendarResult);
@@ -234,6 +234,7 @@ class UserPermissionsManager {
    * Gestisce l'accesso al calendario
    */
   manageCalendarAccess(email) {
+    email = getRealEmail(email);
     try {
       const acl = Calendar.Acl.list(this.resources.calendarId);
       const alreadyShared = acl.items.some(entry => 
@@ -262,6 +263,7 @@ class UserPermissionsManager {
    * Rimuove l'accesso al calendario
    */
   removeCalendarAccess(email) {
+    email = getRealEmail(email);
     try {
       const acl = Calendar.Acl.list(this.resources.calendarId);
       const userEntry = acl.items.find(entry => 
@@ -282,6 +284,7 @@ class UserPermissionsManager {
    * Gestisce l'accesso ai file
    */
   manageFileAccess(email, role) {
+    email = getRealEmail(email);
     const actions = [];
     const fileConfigs = this.getFileConfigs(role);
 
@@ -302,6 +305,7 @@ class UserPermissionsManager {
    * Rimuove l'accesso ai file
    */
   removeFileAccess(email) {
+    email = getRealEmail(email);
     const actions = [];
     const allFiles = [
       { id: this.resources.actionFileId, name: 'Pavora' },
@@ -364,6 +368,7 @@ class UserPermissionsManager {
    * Imposta i permessi per un file
    */
   setFilePermission(file, email, permission, fileName) {
+    email = getRealEmail(email);
     const editors = file.getEditors();
     const viewers = file.getViewers();
     
@@ -394,6 +399,7 @@ class UserPermissionsManager {
    * Rimuove i permessi per un file
    */
   removeFilePermission(file, email, fileName) {
+    email = getRealEmail(email);
     const editors = file.getEditors();
     const viewers = file.getViewers();
     
