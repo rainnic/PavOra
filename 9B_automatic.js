@@ -143,7 +143,7 @@ function checkEventsAndSendEmails() {
       emailBody += `- Evento: ${formattedTitle} | (Inizio: ${convertDateBar(startDate)}) - (Scadenza: ${opzExpDate})\n\n`;
     });
 
-    emailBody += `\nQuesti eventi sono da confermare, o da rivedere la data di scandeza o da rimuovere.\n\nGrazie,\n${sender}`;
+    emailBody += `\nQuesti eventi sono da confermare, o da rivedere la data di scadenza o da rimuovere.\n\nGrazie,\n${sender}`;
 
     // Trova l'email refCom (se presente) per il primo evento del creatore
     const refComEmail = eventsForCreator[0].refComEmail;
