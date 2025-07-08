@@ -74,7 +74,7 @@
 #### b. Set Global Variables
 - In `01_main.gs`, update `IDPavoraCustomSettings` with your custom settings sheet ID
 ![](https://github.com/rainnic/PavOra/blob/main/images/e_change_global_variables__in_GoogleAppsScript_code.jpg).
-- Optionally, configure `IDAliasEmail` to anonymize Gmail addresses, like the original one.
+- Optionally, configure `IDAliasEmail` to anonymize Gmail addresses, like the original one (make a copy, edit and update the Id of this sheet: [AliasEmail for Pavora](https://docs.google.com/spreadsheets/d/1dW8ys39MeujUlt-eoeJ-RvGHPl7kLGqCF-K5h5UB7aY/edit?usp=sharing)).
 - Save with `CTRL+S`.
 
 #### c. Add Triggers
