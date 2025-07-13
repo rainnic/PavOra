@@ -926,17 +926,21 @@ function getCellListNote(what, first, last) {
 
             // Scrivi il testo "modificato" su tutte le celle della riga
             sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
+            return
 
           } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
             ui.alert(translate('modifyEvent.waitSomeTime'));
+            return
           }
         } else {
           ui.alert(translate('modifyEvent.opNOMessage'));
+          return
        }    
       } else if (what === 'deleteEvent') {
         first = convertDateInputHtml(finalList[0][18]);
         last = convertDateInputHtml(finalList[finalList.length - 1][19]);
         deleteEvents(note, first, last, what, activeRow);
+        return
       }
     } 
     if (((lastColumn > 12)) && (what === 'updateSpecificEvent')) {
@@ -947,6 +951,7 @@ function getCellListNote(what, first, last) {
           last = convertDateInputHtml(finalList[finalList.length - 1][19]);
           var listaFinale = logMatchingEvents(myCalID()[0][0], note, first, last);
           showFreeStructModifyEvent(first, last, listaFinale, note);
+          return
         }
       } else {ui.alert(translate('viewList.alertOldEdit', { name: note }));}
     } else {
