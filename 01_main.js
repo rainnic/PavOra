@@ -144,7 +144,9 @@ for (let i = 4; i <= lr; i += 1) {
 
   // Se il ruolo deve cambiare, lo aggiorniamo
   if (currentRole !== newRole) {
-    shareCalendar(myCalID()[0][0], userEmail, newRole);
+    if (aliasEmail()) {userEmail = getRealEmail(userEmail)};
+    Logger.log('usermail è '+userEmail);
+    shareCalendar(myCalID()[0][0], getRealEmail(userEmail), newRole);
 
     if (newRole === "writer") {
       addEditorToProtectedSheet(sheetsList()[0][0], userEmail);
