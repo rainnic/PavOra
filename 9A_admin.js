@@ -60,475 +60,238 @@ function addFilterRegisterPage() {
 }
 
 // -------------------------------------------------------------------------------------
-// Sistema di Gestione Permessi Utenti - Versione Migliorata
+// Gestione permessi utenti (admin, writer, reader, deleted) --> basta verificare la tabella e lanciare manageAccess
 // -------------------------------------------------------------------------------------
-/**
- * Configurazione dei ruoli e permessi
- */
-const ROLES = {
-  ADMIN: 'admin',
-  WRITER: 'writer',
-  READER: 'reader',
-  DELETED: 'deleted'
-};
-
-const PERMISSIONS = {
-  CALENDAR: 'reader',
-  DRIVE_EDITOR: 'editor',
-  DRIVE_VIEWER: 'viewer'
-};
-
-/**
- * Classe principale per la gestione dei permessi
- */
-class UserPermissionsManager {
-  constructor() {
-    this.ui = SpreadsheetApp.getUi();
-    this.currentUser = getAliasEmail(Session.getEffectiveUser().getEmail());
-    this.users = users();
-    this.resources = this.initializeResources();
-  }
-
-  /**
-   * Inizializza le risorse (IDs di file e calendari)
-   */
-  initializeResources() {
-    try {
-      return {
-        calendarId: myCalID()[0][0],
-        actionFileId: driveIDFiles()[0][0],
-        variabiliFileId: driveIDFiles()[1][0],
-        slideQuartiere: templateSlides()[0][0],
-        slideCC: templateSlides()[1][0]
-      };
-    } catch (error) {
-      this.showError('Errore nell\'inizializzazione delle risorse', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Funzione principale per gestire tutti i permessi
-   */
-  manageAccess() {
-    try {
-      // Verifica se l'utente corrente è admin
-      if (!this.isCurrentUserAdmin()) {
-        this.ui.alert(translate('alert.userPermission', { user: this.currentUser }));
-        return;
-      }
-
-      const results = this.processAllUsers();
-      this.showResults(results);
-
-    } catch (error) {
-      this.showError('Errore generale nella gestione dei permessi', error);
-    }
-  }
-
-  /**
-   * Verifica se l'utente corrente è admin
-   */
-  isCurrentUserAdmin() {
-    const userIndex = findKey(this.currentUser, this.users, 0);
-    return userIndex >= 0 && this.users[userIndex][1] === ROLES.ADMIN;
-  }
-
-  /**
-   * Processa tutti gli utenti
-   */
-  processAllUsers() {
-    const results = {
-      success: [],
-      errors: [],
-      newWriters: []
-    };
-
-    this.users.forEach(user => {
-      try {
-        const [email, role] = user;
-        const userResult = this.processUser(email, role);
-        
-        if (userResult.success) {
-          results.success.push(userResult);
-          if (userResult.newWriter) {
-            results.newWriters.push(email);
-          }
-        } else {
-          results.errors.push(userResult);
-        }
-      } catch (error) {
-        results.errors.push({
-          email: user[0],
-          error: error.toString()
-        });
-      }
-    });
-
-    return results;
-  }
-
-  /**
-   * Processa un singolo utente
-   */
-  processUser(email, role) {
-    const result = {
-      email: email,
-      role: role,
-      success: false,
-      actions: [],
-      newWriter: false
-    };
-
-    try {
-      if (role === ROLES.DELETED) {
-        result.actions = this.removeUserAccess(email);
-      } else {
-        result.actions = this.grantUserAccess(email, role);
-        result.newWriter = this.handleNewWriter(email, role);
-      }
-      
-      result.success = true;
-    } catch (error) {
-      result.error = error.toString();
-    }
-
-    return result;
-  }
-
-  /**
-   * Concede accesso a un utente
-   */
-  grantUserAccess(email, role) {
-    const actions = [];
-    email = getRealEmail(email);
-    // Gestione accesso calendario
-    const calendarResult = this.manageCalendarAccess(email);
-    if (calendarResult) actions.push(calendarResult);
-
-    // Gestione accesso file
-    const fileResults = this.manageFileAccess(email, role);
-    actions.push(...fileResults);
-
-    return actions;
-  }
-
-  /**
-   * Rimuove accesso a un utente
-   */
-  removeUserAccess(email) {
-    const actions = [];
-    email = getRealEmail(email);
-    // Rimuove accesso calendario
-    const calendarResult = this.removeCalendarAccess(email);
-    if (calendarResult) actions.push(calendarResult);
-
-    // Rimuove accesso file
-    const fileResults = this.removeFileAccess(email);
-    actions.push(...fileResults);
-
-    return actions;
-  }
-
-  /**
-   * Gestisce l'accesso al calendario
-   */
-  manageCalendarAccess(email) {
-    email = getRealEmail(email);
-    try {
-      const acl = Calendar.Acl.list(this.resources.calendarId);
-      const alreadyShared = acl.items.some(entry => 
-        entry.scope.type === 'user' && entry.scope.value === email
-      );
-
-      if (!alreadyShared) {
-        Calendar.Acl.insert({
-          'scope': {
-            'type': 'user',
-            'value': email
-          },
-          'role': PERMISSIONS.CALENDAR
-        }, this.resources.calendarId);
-        
-        return `Accesso calendario concesso a ${email}`;
-      } else {
-        return `${email} ha già accesso al calendario`;
-      }
-    } catch (error) {
-      throw new Error(`Errore gestione calendario per ${email}: ${error.toString()}`);
-    }
-  }
-
-  /**
-   * Rimuove l'accesso al calendario
-   */
-  removeCalendarAccess(email) {
-    email = getRealEmail(email);
-    try {
-      const acl = Calendar.Acl.list(this.resources.calendarId);
-      const userEntry = acl.items.find(entry => 
-        entry.scope.type === 'user' && entry.scope.value === email
-      );
-
-      if (userEntry) {
-        Calendar.Acl.remove(this.resources.calendarId, userEntry.id);
-        return `Accesso calendario rimosso per ${email}`;
-      }
-      return null;
-    } catch (error) {
-      throw new Error(`Errore rimozione calendario per ${email}: ${error.toString()}`);
-    }
-  }
-
-  /**
-   * Gestisce l'accesso ai file
-   */
-  manageFileAccess(email, role) {
-    email = getRealEmail(email);
-    const actions = [];
-    const fileConfigs = this.getFileConfigs(role);
-
-    fileConfigs.forEach(config => {
-      try {
-        const file = DriveApp.getFileById(config.fileId);
-        const action = this.setFilePermission(file, email, config.permission, config.name);
-        if (action) actions.push(action);
-      } catch (error) {
-        actions.push(`Errore gestione file ${config.name} per ${email}: ${error.toString()}`);
-      }
-    });
-
-    return actions;
-  }
-
-  /**
-   * Rimuove l'accesso ai file
-   */
-  removeFileAccess(email) {
-    email = getRealEmail(email);
-    const actions = [];
-    const allFiles = [
-      { id: this.resources.actionFileId, name: 'Pavora' },
-      { id: this.resources.variabiliFileId, name: 'PavoraCustomSettings' },
-      { id: this.resources.slideQuartiere, name: 'slideQ' },
-      { id: this.resources.slideCC, name: 'slideCC' }
-    ];
-
-    allFiles.forEach(fileInfo => {
-      try {
-        const file = DriveApp.getFileById(fileInfo.id);
-        const action = this.removeFilePermission(file, email, fileInfo.name);
-        if (action) actions.push(action);
-      } catch (error) {
-        actions.push(`Errore rimozione file ${fileInfo.name} per ${email}: ${error.toString()}`);
-      }
-    });
-
-    return actions;
-  }
-
-  /**
-   * Configura i file in base al ruolo
-   */
-  getFileConfigs(role) {
-    const configs = [];
-
-    // File action - accesso in scrittura per tutti
-    configs.push({
-      fileId: this.resources.actionFileId,
-      permission: PERMISSIONS.DRIVE_EDITOR,
-      name: 'Pavora'
-    });
-
-    // File variabili e slide - permessi in base al ruolo
-    const variabiliPermission = role === ROLES.ADMIN ? PERMISSIONS.DRIVE_EDITOR : PERMISSIONS.DRIVE_VIEWER;
-    
-    configs.push(
-      {
-        fileId: this.resources.variabiliFileId,
-        permission: variabiliPermission,
-        name: 'PavoraCustomSettings'
-      },
-      {
-        fileId: this.resources.slideQuartiere,
-        permission: variabiliPermission,
-        name: 'slideQ'
-      },
-      {
-        fileId: this.resources.slideCC,
-        permission: variabiliPermission,
-        name: 'slideCC'
-      }
-    );
-
-    return configs;
-  }
-
-  /**
-   * Imposta i permessi per un file
-   */
-  setFilePermission(file, email, permission, fileName) {
-    email = getRealEmail(email);
-    const editors = file.getEditors();
-    const viewers = file.getViewers();
-    
-    const isEditor = editors.some(user => user.getEmail() === email);
-    const isViewer = viewers.some(user => user.getEmail() === email);
-
-    if (permission === PERMISSIONS.DRIVE_EDITOR) {
-      if (!isEditor) {
-        if (isViewer) file.removeViewer(email);
-        file.addEditor(email);
-        return `Accesso scrittura concesso a ${email} per ${fileName}`;
-      } else {
-        return `${email} ha già accesso in scrittura a ${fileName}`;
-      }
-    } else if (permission === PERMISSIONS.DRIVE_VIEWER) {
-      if (!isViewer && !isEditor) {
-        file.addViewer(email);
-        return `Accesso lettura concesso a ${email} per ${fileName}`;
-      } else {
-        return `${email} ha già accesso a ${fileName}`;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Rimuove i permessi per un file
-   */
-  removeFilePermission(file, email, fileName) {
-    email = getRealEmail(email);
-    const editors = file.getEditors();
-    const viewers = file.getViewers();
-    
-    const isEditor = editors.some(user => user.getEmail() === email);
-    const isViewer = viewers.some(user => user.getEmail() === email);
-
-    const actions = [];
-
-    if (isEditor) {
-      file.removeEditor(email);
-      actions.push(`Accesso scrittura rimosso per ${email} su ${fileName}`);
-    }
-    
-    if (isViewer) {
-      file.removeViewer(email);
-      actions.push(`Accesso lettura rimosso per ${email} su ${fileName}`);
-    }
-
-    return actions.length > 0 ? actions.join('; ') : null;
-  }
-
-  /**
-   * Gestisce l'aggiunta di nuovi writer
-   */
-  handleNewWriter(email, role) {
-    if (role !== ROLES.WRITER) return false;
-
-    const usersOnlineList = usersOnline();
-    if (findKey(email, usersOnlineList, 0) >= 0) return false;
-
-    try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sh = ss.getSheetByName(sheetsList()[1][0]);
-      const lr = sh.getLastRow() + 1;
-      const currentTime = new Date();
-
-      sh.getRange(lr, 1).setValue(email);
-      sh.getRange(lr, 2).setValue(currentTime).setNumberFormat('dd/MM/yy - HH:mm');
-      
-      return true;
-    } catch (error) {
-      throw new Error(`Errore nell'aggiunta del writer ${email}: ${error.toString()}`);
-    }
-  }
-
-  /**
-   * Mostra i risultati delle operazioni
-   */
-  showResults(results) {
-    let message = '';
-    
-    if (results.success.length > 0) {
-      message += `✅ Utenti processati con successo: ${results.success.length}\n`;
-      
-      if (results.newWriters.length > 0) {
-        message += `📝 Nuovi writer aggiunti: ${results.newWriters.join(', ')}\n`;
-      }
-    }
-
-    if (results.errors.length > 0) {
-      message += `❌ Errori: ${results.errors.length}\n`;
-      results.errors.forEach(error => {
-        message += `- ${error.email}: ${error.error}\n`;
-      });
-    }
-
-    if (message) {
-      this.ui.alert(message);
-    }
-  }
-
-  /**
-   * Mostra errori
-   */
-  showError(context, error) {
-    const message = `${context}: ${error.toString()}`;
-    Logger.log(message);
-    this.ui.alert(message);
-  }
-}
-
-// -------------------------------------------------------------------------------------
-// Funzioni di interfaccia pubblica (per mantenere compatibilità)
-// -------------------------------------------------------------------------------------
-
-/**
- * Funzione principale per la gestione dei permessi
- */
 function manageAccess() {
-  const manager = new UserPermissionsManager();
-  manager.manageAccess();
+  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
+  if (users()[findKey(user, users(), 0)][1] == 'admin') {
+    // Dati di esempio: array di utenti e ruoli
+    var utenti = users();
+
+    // ID del calendario Google
+    var calendarId = myCalID()[0][0];
+    //var calendarIdLav = myCalID()[1][0];
+    // ID dei file Google Sheets
+    var actionFileId = driveIDFiles()[0][0];
+    var variabiliFileId = driveIDFiles()[1][0];
+    var aliasEmail = driveIDFiles()[2][0];    
+    var slideQuartiere = templateSlides()[0][0];
+    var slideCC = templateSlides()[1][0];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    sh = ss.getSheetByName(sheetsList()[1][0]);
+    var lr = sh.getLastRow();
+    var currentTime = new Date();
+
+    // Gestisci le condivisioni per ciascun utente
+    utenti.forEach(function (user) {
+      var email = getRealEmail(user[0]);
+      var role = user[1];
+      Logger.log(email + '   ' + role);
+
+      if (role === 'deleted') {
+        // Rimuove l'accesso al calendario e ai file per gli utenti con ruolo "rimosso"
+        //removeAccess(email, calendarId, calendarIdLav, variabiliFileId, actionFileId, slideQuartiere, slideCC);
+        removeAccess(email, calendarId, variabiliFileId, aliasEmail, actionFileId, slideQuartiere, slideCC);
+      } else {
+        // Gestisci l'accesso al calendario Google
+        manageCalendarAccess(email, calendarId);
+        //manageCalendarAccess(email, calendarIdLav);
+
+        // Gestisci l'accesso ai file Google Sheets
+        manageFileAccess(email, role, variabiliFileId, aliasEmail, actionFileId, slideQuartiere, slideCC);
+
+        // Gestisci la registrazione nella scheda utenti online
+        //Logger.log(usersOnline().length);
+        if ((role === 'writer') && (findKey(getAliasEmail(email), usersOnline(), 0) < 0)) {
+          lr += 1;
+          sh.getRange(lr, 1).setValue(getAliasEmail(email));
+          SpreadsheetApp.getUi().alert(translate('admin.addUser', { user: user[0] }));
+          sh.getRange(lr, 2).setValue(currentTime).setNumberFormat('dd/MM/yy - HH:mm');
+        }
+
+      }
+    });
+  } else {
+    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
+    ui.alert(translate('alert.userPermission', { user: user }));
+  }
 }
 
-/**
- * Funzione per gestire l'accesso al calendario (compatibilità)
- */
+// Funzione per gestire l'accesso al calendario
 function manageCalendarAccess(email, calendarId) {
-  try {
-    const manager = new UserPermissionsManager();
-    return manager.manageCalendarAccess(email);
-  } catch (error) {
-    SpreadsheetApp.getUi().alert(`Errore gestione calendario: ${error.toString()}`);
+  //try {
+    // Recupera l'elenco ACL del calendario
+    var acl = Calendar.Acl.list(calendarId);
+    var alreadyShared = acl.items.some(function (entry) {
+      return entry.scope.type === 'user' && entry.scope.value === email;
+    });
+
+    var message = '';
+
+    if (!alreadyShared) {
+      // Aggiunge l'utente come visualizzatore del calendario (freeBusyReader)
+      Calendar.Acl.insert({
+        'scope': {
+          'type': 'user',
+          'value': email
+        },
+        'role': 'reader'
+      }, calendarId);
+      message = message + translate('admin.allowUser') + getAliasEmail(email) + '\n';
+    } else {
+      message = message + translate('admin.allowUser') + getAliasEmail(email) + '\n';
+    }
+    SpreadsheetApp.getUi().alert(message);
+    /*
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(translate('admin.errorManage') + e.toString());
   }
+  */
 }
 
 /**
- * Funzione per gestire l'accesso ai file (compatibilità)
+ * Verifica se l'utente che esegue lo script è il proprietario di un file.
+ * @param {string} fileId L'ID del file di Google Drive.
+ * @returns {boolean} True se l'utente è il proprietario del file, altrimenti false.
  */
-function manageFileAccess(email, role, variabiliFileId, actionFileId, slideQuartiereId, slideCCId) {
+function isMine(fileId) {
   try {
-    const manager = new UserPermissionsManager();
-    return manager.manageFileAccess(email, role);
-  } catch (error) {
-    SpreadsheetApp.getUi().alert(`Errore gestione file: ${error.toString()}`);
+    const file = DriveApp.getFileById(fileId);
+    const ownerEmail = file.getOwner().getEmail();
+    const myEmail = Session.getActiveUser().getEmail();
+    
+    return ownerEmail === myEmail;
+  } catch (e) {
+    // Se il file non esiste o non hai i permessi per vederlo,
+    // la funzione fallisce e restituisce false.
+    //Logger.log('Errore nella verifica del file: ' + e.message);
+    return false;
   }
 }
 
-/**
- * Funzione per rimuovere l'accesso (compatibilità)
- */
-function removeAccess(email, calendarId, variabiliFileId, actionFileId, slideQuartiereId, slideCCId) {
-  try {
-    const manager = new UserPermissionsManager();
-    return manager.removeUserAccess(email);
-  } catch (error) {
-    SpreadsheetApp.getUi().alert(`Errore rimozione accesso: ${error.toString()}`);
+// Funzione per gestire l'accesso ai file Google Sheets
+function manageFileAccess(email, role, variabiliFileId, aliasEmailId, actionFileId, slideQuartiereId, slideCCId) {
+  //try {
+    var variabiliFile = DriveApp.getFileById(variabiliFileId);
+    var actionFile = DriveApp.getFileById(actionFileId);
+    var aliasFile = DriveApp.getFileById(aliasEmailId);
+    var slideQuartiere = DriveApp.getFileById(slideQuartiereId);
+    var slideCC = DriveApp.getFileById(slideCCId);
+
+    // Gestisci l'accesso al file "action" (scrittura per tutti)
+    var actionPermissions = actionFile.getEditors();
+    //Logger.log(user.getEmail());
+    var alreadyEditor = actionPermissions.some(user => user.getEmail() === email);
+
+    var message = '';
+
+    if (!alreadyEditor) {
+      actionFile.addEditor(email);
+      message = message + translate('admin.allowWrite', { file: '\'Pavora\'' }) + getAliasEmail(email) + '\n';
+    } else {
+      message = message + email + translate('admin.alreadyWrite', { file: '\'Pavora\'' }) + getAliasEmail(email) + '\n';
+    }
+
+    // Gestisci l'accesso al file "variabili" (in base al ruolo)
+    var variabiliPermissions = variabiliFile.getEditors();
+    var variabiliViewers = variabiliFile.getViewers();
+    var alreadyViewer = variabiliViewers.some(user => user.getEmail() === email);
+    var alreadyVariabiliEditor = variabiliPermissions.some(user => user.getEmail() === email);
+
+    if (role === 'admin') {
+      if (!alreadyVariabiliEditor) {
+        variabiliFile.addEditor(email);
+        if (isMine(slideQuartiere)) {slideQuartiere.addEditor(email)}
+        if (isMine(slideCC)) {slideCC.addEditor(email)}
+        message = message + translate('admin.allowWrite', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+      } else {
+        message = message + email + translate('admin.alreadyWrite', { file: '\'PavoraCustomSettings\'' }) + '\n';
+      }
+    } else if (role === 'writer') {
+      if (!alreadyVariabiliEditor) {
+        aliasFile.addViewer(email);
+        variabiliFile.addViewer(email);
+        if (isMine(slideQuartiere)) {slideQuartiere.addViewer(email)}
+        if (isMine(slideCC)) {slideCC.addViewer(email)}
+        message = message + translate('admin.allowRead', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+      } else {
+        message = message + email + translate('admin.alreadyRead', { file: '\'PavoraCustomSettings\'' }) + '\n';
+      }
+    } else if (role === 'reader') {
+      if (!alreadyViewer) {
+        aliasFile.addViewer(email);
+        variabiliFile.addViewer(email);
+        if (isMine(slideQuartiere)) {slideQuartiere.addViewer(email)}
+        if (isMine(slideCC)) {slideCC.addViewer(email)}
+        message = message + translate('admin.allowRead', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+      } else {
+        message = message + email + translate('admin.alreadyRead', { file: '\'PavoraCustomSettings\'' }) + '\n';
+      }
+      SpreadsheetApp.getUi().alert(message);
+    }
+    /*
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(translate('admin.errorManage') + e.toString());
   }
+  */
 }
 
+// Funzione per rimuovere l'accesso a calendario e file
+//function removeAccess(email, calendarId, calendarIdLav, variabiliFileId, actionFileId, slideQuartiereId, slideCCId) {
+function removeAccess(email, calendarId, variabiliFileId, aliasEmailId, actionFileId, slideQuartiereId, slideCCId) {
+  //try {
+    // Rimuove l'accesso al calendario
+    var message = '';
+    var acl = Calendar.Acl.list(calendarId);
+    acl.items.forEach(function (entry) {
+      if (entry.scope.type === 'user' && entry.scope.value === email) {
+        Calendar.Acl.remove(calendarId, entry.id);
+        message = message + translate('admin.remCalendar') + getAliasEmail(email);
+      }
+    });
+
+    // Rimuove l'accesso al file "variabili" e "slide"
+    var variabiliFile = DriveApp.getFileById(variabiliFileId);
+    var aliasFile = DriveApp.getFileById(aliasEmailId);
+    if (variabiliFile.getEditors().some(user => user.getEmail() === email)) {
+      variabiliFile.removeEditor(email);
+      message = message + translate('admin.removeWrite', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+    }
+    if (variabiliFile.getViewers().some(user => user.getEmail() === email)) {
+      variabiliFile.removeViewer(email);
+      message = message + translate('admin.removeRead', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+    }
+    if (aliasFile.getViewers().some(user => user.getEmail() === email)) {
+      aliasFile.removeViewer(email);
+      message = message + translate('admin.removeRead', { file: '\'PavoraCustomSettings\'' }) + getAliasEmail(email) + '\n';
+    }
+    if (isMine(slideQuartiere)) {
+    var slideQuartiere = DriveApp.getFileById(slideQuartiereId);
+    if (slideQuartiere.getViewers().some(user => user.getEmail() === email)) {
+      slideQuartiere.removeViewer(email);
+      message = message + translate('admin.removeRead', { file: '\'slideQ\'' }) + getAliasEmail(email) + '\n';
+    }
+    }
+    if (isMine(slideCC)) {
+    var slideCC = DriveApp.getFileById(slideCCId);
+    if (slideCC.getViewers().some(user => user.getEmail() === email)) {
+      slideCC.removeViewer(email);
+      message = message + translate('admin.removeRead', { file: '\'slideCC\'' }) + getAliasEmail(email) + '\n';
+    }
+    }
+    // Rimuove l'accesso al file "action"
+    var actionFile = DriveApp.getFileById(actionFileId);
+    if (actionFile.getEditors().some(user => user.getEmail() === email)) {
+      actionFile.removeEditor(email);
+      message = message + translate('admin.removeWrite', { file: '\'Pavora\'' }) + getAliasEmail(email) + '\n';
+    }
+    SpreadsheetApp.getUi().alert(message);
+    /*
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(translate('admin.errorManage') + e.toString());
+  }
+  */
+}
 // -------------------------------------------------------------------------------------
 
 function adminExecCreateEvents() {
