@@ -473,8 +473,6 @@ function getCellNote(first, last, id) {
     const noteComplete = cell.getNote(); // Nota della cella selezionata
     let note = id || ""; // Usa l'ID passato oppure inizializza
 
-    SpreadsheetApp.getUi().alert('id è ' + id);
-
     if (!id && noteComplete.length !== 0) {
       const extractedId = extractRegex(regexId, noteComplete);
       if (extractedId && extractedId.length === 8) {
@@ -491,10 +489,8 @@ function getCellNote(first, last, id) {
       let finalList;
 
       if (id || (note.length === 8 && /^[A-Za-z0-9]{8}$/.test(note))) {
-        SpreadsheetApp.getUi().alert('id è true');
         finalList = logMatchingEvents(myCalID()[0][0], note, first, last);
       } else {
-        SpreadsheetApp.getUi().alert('id è false');
 
         // Calcola intervallo date dinamico (-5 anni, +5 anni)
         const today = new Date();
@@ -515,7 +511,7 @@ function getCellNote(first, last, id) {
         last = convertDateInputHtml(finalList[finalList.length - 1][19]);
         showFreeStructModifyEvent(first, last, finalList, note);
       } else {
-        SpreadsheetApp.getUi().alert("Nessun evento trovato per '" + note + "'.");
+        SpreadsheetApp.getUi().alert(translate('modifyEvent.noEventFound', { note: note }));
       }
     }
 
