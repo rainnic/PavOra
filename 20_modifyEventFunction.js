@@ -468,33 +468,55 @@ function extractRegex(regex, string) {
 
 function getCellNote(first, last, id) {
   try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var cell = sh.getActiveCell(); // Cella selezionata
-    var noteComplete = cell.getNote(); // Nota della cella selezionata
-    var note = id || ""; // Se ID è passato, lo usa direttamente
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const cell = sh.getActiveCell(); // Cella selezionata
+    const noteComplete = cell.getNote(); // Nota della cella selezionata
+    let note = id || ""; // Usa l'ID passato oppure inizializza
 
-    if (!note && noteComplete.length != 0) { // Se l'ID non è passato, lo estrae
-      note = ((extractRegex(regexId, noteComplete) != 0) ? extractRegex(regexId, noteComplete) : noteComplete.split("  ")[0]);
+    SpreadsheetApp.getUi().alert('id è ' + id);
+
+    if (!id && noteComplete.length !== 0) {
+      const extractedId = extractRegex(regexId, noteComplete);
+      if (extractedId && extractedId.length === 8) {
+        note = extractedId;
+      } else {
+        const match = noteComplete.match(/] (.*?) \(/);
+        note = match ? match[1] : '';
+      }
     }
 
     if (note) {
       sh.getRange(3, 1).setValue(note).setFontSize(10);
 
-      var finalList;
-      if (id) {
-        // Se è stato passato un ID, usa un intervallo ampio di default
-        finalList = logMatchingEvents(myCalID()[0][0], note, '2020-01-01', '2040-12-31');
-      } else {
-        // Se l'ID è stato estratto, usa first e last
+      let finalList;
+
+      if (id || (note.length === 8 && /^[A-Za-z0-9]{8}$/.test(note))) {
+        SpreadsheetApp.getUi().alert('id è true');
         finalList = logMatchingEvents(myCalID()[0][0], note, first, last);
+      } else {
+        SpreadsheetApp.getUi().alert('id è false');
+
+        // Calcola intervallo date dinamico (-5 anni, +5 anni)
+        const today = new Date();
+        const start = new Date(today);
+        start.setFullYear(today.getFullYear() - 5);
+        const end = new Date(today);
+        end.setFullYear(today.getFullYear() + 5);
+
+        const startFormatted = Utilities.formatDate(start, Session.getScriptTimeZone(), "yyyy-MM-dd");
+        const endFormatted = Utilities.formatDate(end, Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+        finalList = logMatchingEvents(myCalID()[0][0], note, startFormatted, endFormatted);
       }
 
-      // Converti le date di inizio e fine evento
-      first = convertDateInputHtml(finalList[0][18]);
-      last = convertDateInputHtml(finalList[finalList.length - 1][19]);
-
-      //Logger.log(JSON.stringify(finalList));
-      showFreeStructModifyEvent(first, last, finalList, note);
+      // Converti date da finalList
+      if (finalList && finalList.length > 0) {
+        first = convertDateInputHtml(finalList[0][18]);
+        last = convertDateInputHtml(finalList[finalList.length - 1][19]);
+        showFreeStructModifyEvent(first, last, finalList, note);
+      } else {
+        SpreadsheetApp.getUi().alert("Nessun evento trovato per '" + note + "'.");
+      }
     }
 
     return note || translate('modifyEvent.emptyCell');
