@@ -6,7 +6,7 @@
 * Please refer to the LICENSE file for the full license text.
 */
 function trygetRealEmail() {
-  Logger.log('La modalità alias è '+aliasEmail());
+  Logger.log('La modalità alias è ' + aliasEmail());
   var email = Session.getEffectiveUser().getEmail();
   Logger.log('Email=' + email);
   Logger.log('RealEmail=' + getRealEmail(email));
@@ -18,7 +18,7 @@ function trygetRealEmail() {
   var real = users()[0][0];
   Logger.log('Real=' + real);
   Logger.log('RealEmail=' + getRealEmail(real));
-  Logger.log('AliasEmail=' + getAliasEmail(real));  
+  Logger.log('AliasEmail=' + getAliasEmail(real));
 }
 
 function getRealEmail(input, idSheet) {
@@ -31,28 +31,28 @@ function getRealEmail(input, idSheet) {
     const ss = SpreadsheetApp.openById(IDAliasEmail);
     const sheet = ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
-    
+
     const searchInput = String(input).trim();
-    
+
     // Cerca in entrambe le colonne
     for (let i = 1; i < data.length; i++) {
       const alias = String(data[i][0]).trim();
       const realEmail = String(data[i][1]).trim();
-      
+
       // Se l'input corrisponde all'alias, restituisce l'email reale
       if (alias === searchInput) {
         return realEmail;
       }
-      
+
       // Se l'input corrisponde già all'email reale, la restituisce
       if (realEmail === searchInput) {
         return realEmail;
       }
     }
-    
+
     // Se non trovato in nessuna colonna, restituisce l'input originale
     return input;
-    
+
   } catch (error) {
     console.error("Errore in getRealEmail:", error);
     return input; // In caso di errore, restituisce l'input originale
@@ -69,28 +69,28 @@ function getAliasEmail(input, idSheet) {
     const ss = SpreadsheetApp.openById(IDAliasEmail);
     const sheet = ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
-    
+
     const searchInput = String(input).trim();
-    
+
     // Cerca in entrambe le colonne
     for (let i = 1; i < data.length; i++) {
       const alias = String(data[i][0]).trim();
       const realEmail = String(data[i][1]).trim();
-      
+
       // Se l'input corrisponde all'email reale, restituisce l'alias
       if (realEmail === searchInput) {
         return alias;
       }
-      
+
       // Se l'input corrisponde già all'alias, lo restituisce
       if (alias === searchInput) {
         return alias;
       }
     }
-    
+
     // Se non trovato in nessuna colonna, restituisce l'input originale
     return input;
-    
+
   } catch (error) {
     console.error("Errore in getAliasEmail:", error);
     return input; // In caso di errore, restituisce l'input originale
@@ -217,7 +217,6 @@ function capitalizeFirstLetter(string) {
  *
  * @returns {aclResource}  See https://developers.google.com/google-apps/calendar/v3/reference/acl#resource
  */
-
 function shareCalendar(calId, user, role) {
   role = role || "reader";
 
@@ -292,7 +291,7 @@ function mandaEmail(data, email, fromMail, sender, evento, subject, tipoAggiunta
 
   var message = translate('admin.emailAuto');
   var message = message + '<br><table><tr><th>Date</th><th>Action</th><th>ID Event</th><th>User Email</th><th>Details</th></tr>';
-  var message = message + '<tr><td>' + data + '</td><td>' + tipoAggiunta + '</td><td>' + evento + '</td><td>' + fromMail + '</td><td>' + testoMatrice + '</td></tr>';
+  var message = message + '<tr><td>' + data + '</td><td>' + tipoAggiunta + '</td><td>' + evento + '</td><td>' + getAliasEmail(fromMail) + '</td><td>' + testoMatrice + '</td></tr>';
 
   var message = message + '</table>';
 
@@ -544,14 +543,14 @@ function readVariablesExt(nameVar, sheetName, idSheet) {
   var lastColumn = sheet.getLastColumn();
   var startRow = 1;
   var data = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
-  
+
   if (findKey(nameVar, data, 0) >= 0) {
     // Starting row of data
     var sR = findKey(nameVar, data, 0) + 2;
-    
+
     // Finishing column of data
     var fC = data[findKey(nameVar, data, 0) + 1].length;
-    
+
     // Finishing row of data
     var fR = 0;
     for (let i = sR, len = data.length; i < len; i++) {
@@ -562,18 +561,18 @@ function readVariablesExt(nameVar, sheetName, idSheet) {
         fR += 1;
       }
     }
-    
+
     // Debug: aggiungi logging
     console.log('fR:', fR, 'fC:', fC);
-    
+
     // Assicurati che ci sia almeno una riga di dati
     if (fR === 0) {
       fR = 1;
     }
-    
+
     var variable = makeArray(fR, fC);
     var k = 0;
-    
+
     for (let i = sR, len = data.length; i < len && k < fR; i++) {
       // Controllo più robusto per la presenza della riga
       if (data[i] && data[i].length > 0) {
@@ -605,16 +604,16 @@ function readVariablesExt(nameVar, sheetName, idSheet) {
         break;
       }
     }
-    
+
     // Debug: verifica che variable sia stato creato correttamente
     console.log('variable length:', variable.length);
     if (variable.length > 0) {
       console.log('variable[0] length:', variable[0].length);
     }
-    
+
     return variable;
   }
-  
+
   // Restituisce un array vuoto se la chiave non viene trovata
   return [];
 }
