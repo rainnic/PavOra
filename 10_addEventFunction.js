@@ -219,11 +219,7 @@ function addLogRevision(oggi, tipoAggiunta, eventID, utenteEmail, array) {
 
   // Aggiungi una nuova riga con i dati
   sheet.appendRow(dataDaInserire);
-  //sheetBackup.appendRow(dataDaInserire);
   var subject = translate('addEvent.logSubject') + convertDateBar(oggi) + '_' + convertHour(oggi) + ' ' + eventID;
-  // mandaEmail(data, utenteEmail, emailTarget()[0][0], emailTarget()[0][1], evento, subject, tipoAggiunta, JSON.stringify(array));
-  //Logger.log(emailTarget()[0][0]);
-  //Logger.log(getRealEmail(emailTarget()[0][0]));
   mandaEmail(oggi, getRealEmail(emailTarget()[0][0]), utenteEmail, emailTarget()[0][1], eventID, subject, tipoAggiunta, JSON.stringify(array));
 }
 
