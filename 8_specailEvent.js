@@ -94,7 +94,7 @@ function specialNewDailyEvent() {
     range.setFontColor("#000000");
     range.setHorizontalAlignment("center");
     range.setVerticalAlignment("middle");
-    range.setNote("Nuovo evento in fase di definizione");
+    range.setNote(translate('specialEvent.newEvent'));
   }
 }
 
@@ -103,7 +103,7 @@ function getSelectionDailyData() {
   const range = sheet.getActiveRange();
 
   if (!range) {
-    Browser.msgBox("Seleziona almeno una cella prima di continuare.");
+    Browser.msgBox(translate('specialEvent.selectOneFirst'));
     return null;
   }
 
@@ -116,7 +116,7 @@ function getSelectionDailyData() {
   const dateEnd = sheet.getRange(2, endCol).getValue();
 
   if (!dateStart || !dateEnd || isNaN(new Date(dateStart)) || isNaN(new Date(dateEnd))) {
-    Browser.msgBox("Seleziona celle che contengano date valide nella riga 2.");
+    Browser.msgBox(translate('specialEvent.selectCellRowSec'));
     return null;
   }
 
@@ -149,14 +149,14 @@ function specialDeleteDailyEvent(first) {
   var note = range.getNote(); // Prende la nota della cella selezionata
 
   if (!note) {
-    SpreadsheetApp.getUi().alert("Nessuna nota presente nella cella selezionata.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noNoteCell'));
     return;
   }
 
   var regexId = /id=([^\s">]+)/;
   var match = note.match(regexId);
   if (!match) {
-    SpreadsheetApp.getUi().alert("Nessun ID trovato nella nota.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noIdFound'));
     return;
   }
 
@@ -178,14 +178,14 @@ function specialUpdateDailyEvent(first) {
   var note = range.getNote(); // Prende la nota della cella selezionata
 
   if (!note) {
-    SpreadsheetApp.getUi().alert("Nessuna nota presente nella cella selezionata.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noNoteCell'));
     return;
   }
 
   var regexId = /id=([^\s">]+)/;
   var match = note.match(regexId);
   if (!match) {
-    SpreadsheetApp.getUi().alert("Nessun ID trovato nella nota.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noIdFound'));
     return;
   }
 
@@ -220,7 +220,7 @@ function specialNewEvent() {
     range.setHorizontalAlignment("center"); // Centra il testo
     range.setVerticalAlignment("middle");
     //range.setFontWeight("bold"); // Grassetto
-    range.setNote("Nuovo evento in fase di definizione"); // Aggiunge la nota
+    range.setNote(translate('specialEvent.newEvent')); // Aggiunge la nota
 
     //SpreadsheetApp.getUi().alert("Il range " + selectionData.range + " è stato evidenziato.");
 
@@ -233,7 +233,7 @@ function getSelectionData() {
   var range = sheet.getActiveRange(); // Ottieni la selezione attiva
 
   if (!range) {
-    Browser.msgBox("Seleziona almeno una cella prima di continuare.");
+    Browser.msgBox(translate('specialEvent.selectOneFirst'));
     return null;
   }
 
@@ -244,7 +244,7 @@ function getSelectionData() {
 
   // Controllo: la selezione deve includere almeno una colonna valida
   if (startCol > (sheet.getLastColumn() - 1)) {
-    Browser.msgBox("Seleziona almeno una colonna valida.");
+    Browser.msgBox(translate('specialEvent.selectValidColumn'));
     return null;
   }
 
@@ -253,7 +253,7 @@ function getSelectionData() {
   var dateEnd = sheet.getRange(5, endCol).getValue();
 
   if (!dateStart || !dateEnd || isNaN(new Date(dateStart)) || isNaN(new Date(dateEnd))) {
-    Browser.msgBox("Seleziona celle che contengano date valide nella riga 5.");
+    Browser.msgBox(translate('specialEvent.selectCellRowfive'));
     return null;
   }
 
@@ -294,14 +294,14 @@ function specialDeleteEvent(first, last) {
   var note = range.getNote(); // Prende la nota della cella selezionata
 
   if (!note) {
-    SpreadsheetApp.getUi().alert("Nessuna nota presente nella cella selezionata.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noNoteCell'));
     return;
   }
 
   var regexId = /id=([^\s">]+)/;
   var match = note.match(regexId);
   if (!match) {
-    SpreadsheetApp.getUi().alert("Nessun ID trovato nella nota.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noIdFound'));
     return;
   }
 
@@ -342,14 +342,14 @@ function specialUpdateEvent(first, last) {
   var note = range.getNote(); // Prende la nota della cella selezionata
 
   if (!note) {
-    SpreadsheetApp.getUi().alert("Nessuna nota presente nella cella selezionata.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noNoteCell'));
     return;
   }
 
   var regexId = /id=([^\s">]+)/;
   var match = note.match(regexId);
   if (!match) {
-    SpreadsheetApp.getUi().alert("Nessun ID trovato nella nota.");
+    SpreadsheetApp.getUi().alert(translate('specialEvent.noIdFound'));
     return;
   }
 
@@ -666,7 +666,7 @@ function generaMatriceEventiConColori(eventi, intervalloInizio, intervalloFine, 
   // Intestazioni
   const intestazioneMesi = [inizio.getFullYear()];
   const intestazioneGiorno = [translate('specialEvent.date')];
-  const intestazioneGiornoSett = [translate('rspecialEvent.structure')];
+  const intestazioneGiornoSett = [translate('specialEvent.structure')];
 
   for (const giorno of dateList) {
     //intestazioneMesi.push(giorno.getDate() === 1 ? nomiMesi[giorno.getMonth()] : '');
