@@ -579,7 +579,19 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
         }
       }
       var usedUnique = usedLocations.filter(onlyUnique);
-      var usedUnique = usedUnique.filter(element => !array[0][20].includes(element));
+      //var usedUnique = usedUnique.filter(element => !array[0][20].includes(element));
+      var colValue = array[0][20];
+      // Se colValue è null o vuoto, usa l'array alla posizione 4
+      if (!colValue && Array.isArray(array[0][4])) {
+        colValue = array[0][4].join(",");
+      }
+      // Se colValue ora è una stringa valida, procedi con il filtro
+      if (typeof colValue === "string") {
+        var colArray = colValue.split(",").map(s => s.trim());
+        usedUnique = usedUnique.filter(element => !colArray.includes(element));
+      } else {
+        Logger.log("Nessun valore valido per il filtro: colValue = " + colValue);
+      }      
       var freeStructures = strutture();
       for (let i = 0; i < usedUnique.length; i += 1) {
         if (findKey(usedUnique[i], freeStructures, 0) >= 0) {
