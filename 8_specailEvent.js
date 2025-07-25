@@ -527,6 +527,7 @@ function resetFoglioConNuovo() {
   // (Opzionale) segnaposto
   const today = new Date();
   foglioNuovo.getRange(1, 1).setValue(translate('specialEvent.newSheet') + '\n' + formatDateMaster(today).ora + ' ' + formatDateMaster(today).giorno);
+  protectSheets();
 }
 
 function generaMatriceEventiConColori(eventi, intervalloInizio, intervalloFine, luoghi) {
