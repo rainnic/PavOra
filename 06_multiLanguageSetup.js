@@ -543,7 +543,7 @@ function getTranslations() {
         'newSheet': 'Foglio creato alle ',
         'filter': 'Filtri di ricerca',
         'info': 'Qui sotto puoi aggiungere o modificare gli eventi presenti nel foglio a sinistra, precedentemente ricercati nel menu \'Filtri di ricerca\', basta selezionare le celle con le strutture e i giorni per aggiungere un evento o la singola cella per modificare l\'intero evento o cancellarlo:',
-        'tip' : 'È vivamente raccomandato aggiornare il diagraamma sulla sinistra',
+        'tip' : 'È vivamente raccomandato aggiornare il diagramma sulla sinistra',
         'events' : 'Eventi:',
         'date' : 'Data',
         'structure' : 'Struttura',
