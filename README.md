@@ -175,7 +175,8 @@
 ## 🔗 Links
 
 - GitHub: [github.com/rainnic/PavOra](https://github.com/rainnic/PavOra)
-- Website: `coming soon`
+- Website (English): [nicolarainiero.altervista.org/en/category/pavora-en/](https://nicolarainiero.altervista.org/en/category/pavora-en/)
+- Website (Italian): [nicolarainiero.altervista.org/category/pavora-it/](https://nicolarainiero.altervista.org/category/pavora-it/)
 
 ---
 
