@@ -619,48 +619,52 @@ function readVariablesExt(nameVar, sheetName, idSheet) {
 }
 
 function readSheet(container, internal) {
-  // With this I get this error: Exception: Non disponi dell'autorizzazione per chiamare SpreadsheetApp.openById. Autorizzazioni richieste: https://www.googleapis.com/auth/spreadsheets
-  // Tried to edit appscript.json with this code found here: https://stackoverflow.com/questions/30587331/you-do-not-have-permission-to-call-openbyid
-  if (internal) {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(sheetsList()[1][0]);
-    if (!sheet) {
-      // Crea un nuovo foglio
-      sheet = ss.insertSheet(sheetsList()[1][0]);
+  try {
+    // With this I get this error: Exception: Non disponi dell'autorizzazione per chiamare SpreadsheetApp.openById. Autorizzazioni richieste: https://www.googleapis.com/auth/spreadsheets
+    // Tried to edit appscript.json with this code found here: https://stackoverflow.com/questions/30587331/you-do-not-have-permission-to-call-openbyid
+    if (internal) {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName(sheetsList()[1][0]);
+      if (!sheet) {
+        // Crea un nuovo foglio
+        sheet = ss.insertSheet(sheetsList()[1][0]);
 
-      // Imposta i nomi delle colonne
-      sheet.getRange('A1').setValue(translate('main.user'));
-      sheet.getRange('A2').setValue('email');
-      sheet.getRange('B2').setValue(translate('main.lastOnline'));
+        // Imposta i nomi delle colonne
+        sheet.getRange('A1').setValue(translate('main.user'));
+        sheet.getRange('A2').setValue('email');
+        sheet.getRange('B2').setValue(translate('main.lastOnline'));
 
-      // Imposta lo stile della prima riga
-      var headerRange = sheet.getRange('A2:B2');
-      headerRange.setBackground('#D3D3D3'); // Grigio chiaro
-      headerRange.setFontWeight('bold');
+        // Imposta lo stile della prima riga
+        var headerRange = sheet.getRange('A2:B2');
+        headerRange.setBackground('#D3D3D3'); // Grigio chiaro
+        headerRange.setFontWeight('bold');
 
-      // Imposta la larghezza delle colonne
-      sheet.setColumnWidth(1, 250); // Colonna A
-      sheet.setColumnWidth(2, 200); // Colonna B
+        // Imposta la larghezza delle colonne
+        sheet.setColumnWidth(1, 250); // Colonna A
+        sheet.setColumnWidth(2, 200); // Colonna B
 
-      var currentTime = new Date();
-      currentTime.setMinutes(currentTime.getMinutes() - 20);
-      for (let i = 0; i < users().length; i += 1) {
-        if (users()[i][1] != 'reader') {
-          sheet.getRange(i + 3, 1).setValue(users()[i][0]);
-          sheet.getRange(i + 3, 2).setValue(currentTime).setNumberFormat('dd/MM/yy - HH:mm');
+        var currentTime = new Date();
+        currentTime.setMinutes(currentTime.getMinutes() - 20);
+        for (let i = 0; i < users().length; i += 1) {
+          if (users()[i][1] != 'reader') {
+            sheet.getRange(i + 3, 1).setValue(users()[i][0]);
+            sheet.getRange(i + 3, 2).setValue(currentTime).setNumberFormat('dd/MM/yy - HH:mm');
+          }
         }
       }
-    }
 
-  } else {
-    var ss = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/' + IDPavoraCustomSettings + '/edit');
+    } else {
+      var ss = SpreadsheetApp.openByUrl('https://docs.google.com/spreadsheets/d/' + IDPavoraCustomSettings + '/edit');
+    }
+    var sheet = ss.getSheetByName(container);
+    var lastRow = sheet.getLastRow();
+    var lastColumn = sheet.getLastColumn();
+    var startRow = 1;
+    var data = sheet.getRange(1, 1, lastRow, lastColumn).getValues(); //getRange(starting Row, starting column, number of rows, number of columns)
+    return data
+  } catch (e) {
+    logErrorToManagedLogSheet("readSheet", e);
   }
-  var sheet = ss.getSheetByName(container);
-  var lastRow = sheet.getLastRow();
-  var lastColumn = sheet.getLastColumn();
-  var startRow = 1;
-  var data = sheet.getRange(1, 1, lastRow, lastColumn).getValues(); //getRange(starting Row, starting column, number of rows, number of columns)
-  return data
 }
 
 // Info: readVariables('name of the variable to find', container)
@@ -1056,6 +1060,32 @@ function checkToday() {
   rules.push(rule);
   sheet.setConditionalFormatRules(rules);
 }
+
+// Accetta "sheet" come parametro invece di cercarlo
+/*
+function checkToday(sheet) {
+  // Se per qualche motivo il foglio non viene passato, cercalo, 
+  // ma con un controllo di sicurezza
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  }
+
+  const numColumns = sheet.getMaxColumns(); // Usa getMaxColumns per coprire tutto il foglio
+  
+  // Definiamo il range (Riga 3, Colonna 2, per 4 righe, fino all'ultima colonna)
+  const rangeToHighlight = sheet.getRange(3, 2, 4, numColumns - 1);
+  
+  const rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=B$5=today()')
+    .setBackground("#d9d9d9")
+    .setRanges([rangeToHighlight])
+    .build();
+
+  // Essendo un foglio appena resettato/creato, possiamo sovrascrivere 
+  // direttamente le regole invece di fare il push, è più veloce e pulito.
+  sheet.setConditionalFormatRules([rule]);
+}
+*/
 
 // Return the last day of the month
 // console.log(LastDayOfMonth(2020, 2)) // => Sat Feb 29 2020

@@ -136,6 +136,7 @@ function getTranslations() {
       'alert': {
         'userPermission': '{user} does not have the permission!',
         'errorMessage': 'An error occured, please try again.',
+        'missingDates' : 'Insert start and end date',
       },
       'alertHtml': {
         'messageDate': 'The end date must be later than the initial date!',
@@ -237,6 +238,13 @@ function getTranslations() {
         'editSlide': 'Would you like to edit it in Google Slides?',
         'slideFile': '_DailyAllocation_',
         'slideFileAlert': 'The file is available here: ',
+        'step1Config' : 'Select dates',
+        'loadEvents' : 'Load the events',
+        'step2Colors' : 'Select colors',
+        'step3Generate' : 'Create the plan',
+        'saveColors' : 'Save colors',
+        'resetColors' : 'Reset colors',
+        'startGeneration' : 'Generate',
       },      
       'sidebar': {
         'specialEvent': 'Event Management',
@@ -251,7 +259,7 @@ function getTranslations() {
       },
       'specialEvent': {
         'newSheet': 'Sheet created at ',
-        'filter': 'Search Filters',
+        'filter': 'Filter by date',
         'info': 'Below you can add or edit the events listed in the sheet on the left, previously searched through the \'Search Filters\' menu. Just select the cells with the structures and dates to add an event, or a single cell to edit or delete the entire event:',
         'tip' : 'An update to the diagram on the left is suggested',
         'events' : 'Events:',
@@ -428,6 +436,7 @@ function getTranslations() {
       'alert': {
         'userPermission': '{user} non ha il permesso!',
         'errorMessage': 'Si è verificato questo errore: {error}.\nRiprova per cortesia.',
+        'missingDates' : 'Inserisci le date di inizio e fine',
       },
       'alertHtml': {
         'messageDate': 'La data finale deve essere successiva a quella iniziale!',
@@ -445,7 +454,7 @@ function getTranslations() {
         'extraTime': 'L\'evento non può durare più di un giorno!',
         'selecDay4edit': 'Scegli il giorno in cui si svolge l\'evento da modificare o cancellare',
         'selecDayInt': 'Seleziona il giorno di interesse:',
-        'selecTimeInt': 'Selezione l\'intervallo di tempo:',
+        'selecTimeInt': 'Seleziona l\'intervallo di tempo:',
         'fiftMin': '15 minuti',
         'therMin': '30 minuti',
         'sixMin': '60 minuti',        
@@ -456,7 +465,7 @@ function getTranslations() {
         'user': 'User', // Mantain the same word in eveny language
         'email': 'e-mail',
         'lastOnline': 'Ultima volta online',
-        'specialEvent': 'Gestione dinamica degli eventi',
+        'specialEvent': 'Gestione eventi',
         'addEventPageStart': 'Selezione il periodo dell\'evento',
         'modifyEventPage': 'Modifica, copia  o concella un evento',
         'viewCalendarPage': 'Visualizza gli eventi in un Gantt adattato',
@@ -527,6 +536,13 @@ function getTranslations() {
         'editSlide': 'Vuoi modficarlo in Presentazioni Google?',
         'slideFile': '_Occupazione_',
         'slideFileAlert': 'Il file lo trovi qui: ',
+        'step1Config' : 'Scegli i giorni',
+        'loadEvents' : 'Carica gli eventi',
+        'step2Colors' : 'Scegli i colori',
+        'step3Generate' : 'Crea la planimetria',
+        'saveColors' : 'Salva i colori',
+        'resetColors' : 'Resetta i colori',
+        'startGeneration' : 'Genera',
       },            
       'sidebar': {
         'specialEvent': 'Gestione eventi',
@@ -541,7 +557,7 @@ function getTranslations() {
       },
       'specialEvent': {
         'newSheet': 'Foglio creato alle ',
-        'filter': 'Filtri di ricerca',
+        'filter': 'Filtra gli eventi per data',
         'info': 'Qui sotto puoi aggiungere o modificare gli eventi presenti nel foglio a sinistra, precedentemente ricercati nel menu \'Filtri di ricerca\', basta selezionare le celle con le strutture e i giorni per aggiungere un evento o la singola cella per modificare l\'intero evento o cancellarlo:',
         'tip' : 'È vivamente raccomandato aggiornare il diagramma sulla sinistra',
         'events' : 'Eventi:',

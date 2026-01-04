@@ -1,0 +1,2237 @@
+<!DOCTYPE html>
+<html>
+<!--
+/*
+* Project Name: Pavora - Unified Sidebar
+* To fix this issue:
+* Ui.showSidebar() fails to replace existing sidebar (Deadlock & Cross-Addon Blocking)
+* Copyright (c) 2025 Nicola Rainiero
+*
+* This software is released under the MIT License.
+* Please refer to the LICENSE file for the full license text.
+*/
+-->
+
+<head>
+    <base target="_top">
+    <?!= HtmlService.createHtmlOutputFromFile('W_styleSheet').getContent(); ?>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <?!= HtmlService.createHtmlOutputFromFile('W_javaScript').getContent(); ?>
+    <style>
+        .button-menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        /* Hide all sections by default */
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+    </style>
+    <script>
+        // Data passed from server via doGet (only structures, no permission)
+        var data = <?!= JSON.stringify(dataFromServerTemplate) ?>;
+
+        // Structures data
+        var structuresData = data;
+
+        // Permission will be loaded dynamically via getCurrentUserPermission()
+        var permission = null;
+
+        // Multi-language support - passed from doGet function
+        const translationsString = <?= JSON.stringify(translations) ?>;
+        const currentLanguage = "<?= currentLanguage ?>";
+        const translations = JSON.parse(translationsString);
+
+        // Translate function
+        function translate(key, placeholders = {}) {
+            const keys = key.split('.');
+            let translation = translations[currentLanguage];
+
+            for (const k of keys) {
+                translation = translation?.[k];
+                if (!translation) {
+                    return key;
+                }
+            }
+
+            Object.keys(placeholders).forEach(placeholder => {
+                const regex = new RegExp(`\\{${placeholder}\\}`, 'g');
+                translation = translation.replace(regex, placeholders[placeholder]);
+            });
+            return translation;
+        }
+
+        // Initialize the app
+        function initialize() {
+            console.log('Structures loaded:', structuresData ? structuresData.length : 0);
+
+            // Load the CURRENT user's permission (not admin's)
+            google.script.run
+                .withSuccessHandler(function (userPermission) {
+                    permission = userPermission;
+                    console.log('Current user permission:', permission);
+
+                    // Now show menu and generate buttons based on actual user permission
+                    showSection('menu');
+                    generateMenuButtons();
+
+                    // Attach date validation to all date pairs
+                    attachDateValidation();
+
+                })
+                .withFailureHandler(function (error) {
+                    console.error('Error loading permission:', error);
+                    alert(translate('alert.errorLoadingPermission') || 'Error loading user permission');
+                })
+                .getCurrentUserPermission();
+        }
+
+        function statsRows() {
+
+            const button = document.getElementById('statsRows');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            // Simula un lavoro con setTimeout
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewCalendarPage.statsRows');
+                //alert("Operazione completata!");
+            }, 60000);
+
+            google.script.run.countRowsBackgroundNuova();
+        }
+
+        function statsColumns() {
+
+            const button = document.getElementById('statsColumns');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            // Simula un lavoro con setTimeout
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewCalendarPage.statsColumns');
+                //alert("Operazione completata!");
+            }, 60000);
+
+            google.script.run.countColumnsBackgroundNuova();
+        }
+
+        /**
+         * Validates that start date is not after finish date
+         */
+        function validateDateRange(startDateId, finishDateId, messageId) {
+            const startDateEl = document.getElementById(startDateId);
+            const finishDateEl = document.getElementById(finishDateId);
+            const messageEl = document.getElementById(messageId);
+
+            if (!startDateEl || !finishDateEl) {
+                return true;
+            }
+
+            const startDate = startDateEl.value;
+            const finishDate = finishDateEl.value;
+
+            // If either date is empty, skip validation
+            if (!startDate || !finishDate) {
+                return true;
+            }
+
+            // Compare dates
+            if (new Date(startDate) > new Date(finishDate)) {
+                if (messageEl) {
+                    messageEl.innerHTML = '<span style="color:red;font-weight:bold;">⚠️ ' +
+                        (translate('alertHtml.messageDate') || 'La data iniziale non può essere successiva alla data finale!') +
+                        '</span>';
+                    messageEl.style.display = 'block';
+                }
+                //finishDateEl.focus();
+                return false;
+            }
+
+            // Clear any previous error message
+            if (messageEl) {
+                messageEl.innerHTML = '';
+                messageEl.style.display = 'none';
+            }
+
+            return true;
+        }
+
+        /**
+         * Check last update and show warning message if needed
+         */
+        function checkLastUpdateSE() {
+            var lastUpdate = localStorage.getItem('se-lastUpdate');
+            var messageDiv = document.getElementById('se-updateMessage');
+
+            if (lastUpdate && messageDiv) {
+                var now = Date.now();
+                var elapsedTime = now - parseInt(lastUpdate, 10);
+
+                // Se è passato più di un'ora (3600000 millisecondi), mostra il messaggio
+                if (elapsedTime > 3600000) {
+                    messageDiv.style.display = 'block';
+                } else {
+                    messageDiv.style.display = 'none';
+                }
+            }
+        }
+
+        /**
+         * Initialize Special Event section with localStorage data
+         */
+        function initSpecialEvent() {
+
+            document.getElementById('se-form').addEventListener('submit', function (event) {
+                submitSpecialEvent(event);
+            });
+
+            var first = localStorage.getItem('se-startDate') || "";
+            var last = localStorage.getItem('se-finishDate') || "";
+            var keyword = localStorage.getItem('se-keyword') || "";
+            var selectedStruct = localStorage.getItem('se-selectedStruct') || "";
+
+            // Imposta i valori solo se esistono
+            var startDateEl = document.getElementById('se-startDate');
+            var finishDateEl = document.getElementById('se-finishDate');
+            var keywordEl = document.getElementById('se-keyword');
+
+            if (startDateEl) startDateEl.value = first;
+            if (finishDateEl) finishDateEl.value = last;
+            if (keywordEl) keywordEl.value = keyword;
+
+            // Ripristina i valori delle select multiple
+            if (selectedStruct) {
+                var selectedValues = selectedStruct.split(',').map(s => s.trim());
+                document.querySelectorAll('#quartiereSE option, #congressSE option').forEach(option => {
+                    option.selected = selectedValues.includes(option.value);
+                });
+            } else {
+                // Se localStorage è vuoto, deseleziona tutti
+                document.querySelectorAll('#quartiereSE option, #congressSE option').forEach(option => {
+                    option.selected = false;
+                });
+            }
+
+            checkLastUpdateSE();
+        }
+
+        /**
+         * Special Event submit
+         */
+        function submitSpecialEvent(event) {
+
+            // 1. DISABILITA SUBITO il pulsante per evitare clic multipli
+            const button = document.getElementById('se-submitButton');
+            if (button) {
+                button.disabled = true;
+                button.innerText = translate('viewCalendarPage.waitTr');
+            }
+
+            console.log('submitSpecialEvent chiamata'); // Debug
+
+            // BLOCCA SEMPRE il submit del form
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            var details = document.getElementById('se-detailsSection');
+            var startDateEl = document.getElementById('se-startDate');
+            var finishDateEl = document.getElementById('se-finishDate');
+
+            console.log('Start date value:', startDateEl.value); // Debug
+            console.log('Finish date value:', finishDateEl.value); // Debug
+
+            // Controlla se i campi sono vuoti
+            if (!startDateEl.value || !finishDateEl.value) {
+                console.log('Campi mancanti, apro details e esco'); // Debug
+
+                // Apri il details per mostrare i campi
+                if (details) {
+                    details.open = true;
+                }
+
+                // Focus sul primo campo vuoto
+                if (!startDateEl.value) {
+                    startDateEl.focus();
+                } else {
+                    finishDateEl.focus();
+                }
+
+                alert(translate('alert.missingDates') || 'Devi inserire una data di inizio e fine.');
+
+                // ESCI IMMEDIATAMENTE dalla funzione - NON eseguire nient'altro
+                button.disabled = false; // RIABILITA QUI
+                button.innerText = translate('viewCalendarPage.goUpdateTr');
+                return false;
+            }
+
+            console.log('Validazione date passata, continuo...'); // Debug
+
+            // Apri il details per la validazione
+            if (details) {
+                details.open = true;
+            }
+
+            var first = startDateEl.value;
+            var last = finishDateEl.value;
+            var keyword = document.getElementById('se-keyword').value;
+
+            // Verifica date
+            var selectedStartDate = new Date(first);
+            var selectedFinishDate = new Date(last);
+            if (selectedFinishDate < selectedStartDate) {
+                console.log('Date non valide, esco'); // Debug
+                alert(translate('alertHtml.messageDate') || 'La data finale non può essere precedente alla data iniziale!');
+                finishDateEl.value = '';
+                finishDateEl.focus();
+                return false; // ESCI dalla funzione
+            }
+
+            console.log('Validazione completa, eseguo le chiamate server'); // Debug
+
+            // Salva i dati
+            var selectElementQ = document.getElementById('quartiereSE');
+            var selectElementC = document.getElementById('congressSE');
+
+            var selectedValuesQ = Array.from(selectElementQ.selectedOptions, option => option.value);
+            var selectedValuesC = Array.from(selectElementC.selectedOptions, option => option.value);
+
+            var selectedStruct = [...selectedValuesQ, ...selectedValuesC].join(', ');
+
+            localStorage.setItem('se-startDate', first);
+            localStorage.setItem('se-finishDate', last);
+            localStorage.setItem('se-keyword', keyword);
+            localStorage.setItem('se-selectedStruct', selectedStruct);
+
+            // Gestione del bottone
+            //const button = document.getElementById('se-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewCalendarPage.goUpdateTr');
+            }, 20000);
+
+            localStorage.setItem('se-lastUpdate', Date.now());
+            checkLastUpdateSE();
+
+            google.script.run.updateTimeUser();
+            google.script.run.salvaDatiInUserProperties(first, last, keyword, selectedStruct);
+            google.script.run.showMonths(first, last, selectedStruct, keyword, '');
+
+            // SOLUZIONE: CHIAMA SOLO showMonths e fai tutto lì dentro in sequenza
+            /*
+            google.script.run
+                .withSuccessHandler(function() {
+                    console.log('Operazione completata con successo');
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Errore:', error);
+                    alert('Errore: ' + error.message);
+                })
+                .wrapperSpecialEvent(first, last, keyword, selectedStruct);
+              */
+
+            // CHIUSURA IMMEDIATA (fuori dai gestori success/failure)
+            //const details = document.getElementById('se-detailsSection');
+            if (details) {
+                details.open = false;
+            }
+
+            return false; // Blocca comunque il submit del form
+        }
+
+        /**
+         * Reset Special Event form
+         */
+        function resetSpecialEventForm() {
+            // Rimuove i dati dal localStorage
+            localStorage.removeItem('se-startDate');
+            localStorage.removeItem('se-finishDate');
+            localStorage.removeItem('se-keyword');
+            localStorage.removeItem('se-selectedStruct');
+
+            // Resetta il form
+            document.getElementById("se-form").reset();
+
+            // Forza il reset dei valori degli input
+            document.getElementById("se-startDate").value = "";
+            document.getElementById("se-finishDate").value = "";
+            document.getElementById("se-keyword").value = "";
+
+            // Rimuove la selezione dai dropdown multipli
+            document.querySelectorAll("#quartiereSE option, #congressSE option").forEach(option => {
+                option.selected = false;
+            });
+
+            // Nasconde eventuali messaggi
+            var messageEl = document.getElementById("se-message");
+            if (messageEl) {
+                messageEl.style.display = "none";
+            }
+
+            var updateMessageEl = document.getElementById("se-updateMessage");
+            if (updateMessageEl) {
+                updateMessageEl.style.display = "none";
+            }
+        }
+
+        /**
+         * Special Event - New Event button
+         */
+        function seNewEvent() {
+            const button = document.getElementById('se-newEvent');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.newEvent');
+            }, 20000);
+
+            google.script.run.specialNewEvent();
+        }
+
+        /**
+         * Special Event - Update Specific Event button
+         */
+        function seUpdateSpecificEvent() {
+            var first = document.getElementById("se-startDate").value;
+            var last = document.getElementById("se-finishDate").value;
+
+            const button = document.getElementById('se-aggiornaSpec');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.upSpec');
+            }, 20000);
+
+            google.script.run.specialUpdateEvent(first, last);
+        }
+
+        /**
+         * Special Event - Delete Event button
+         */
+        function seDeleteEvent() {
+            var first = document.getElementById("se-startDate").value;
+            var last = document.getElementById("se-finishDate").value;
+
+            const button = document.getElementById('se-cancella');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.delEvent');
+            }, 20000);
+
+            google.script.run.specialDeleteEvent(first, last);
+        }
+
+        // Avvia il controllo ogni 60 secondi per il messaggio di aggiornamento
+        setInterval(checkLastUpdateSE, 60000);
+
+
+        /**
+         * Check last update and show warning message for Special Daily Event
+         */
+        function checkLastUpdateSDE() {
+            var lastUpdate = localStorage.getItem('sde-lastUpdate');
+            var messageDiv = document.getElementById('sde-updateMessage');
+
+            if (lastUpdate && messageDiv) {
+                var now = Date.now();
+                var elapsedTime = now - parseInt(lastUpdate, 10);
+
+                if (elapsedTime > 3600000) {
+                    messageDiv.style.display = 'block';
+                } else {
+                    messageDiv.style.display = 'none';
+                }
+            }
+        }
+
+        /**
+         * Initialize Special Daily Event section with localStorage data
+         */
+        function initSpecialDailyEvent() {
+            document.getElementById('sde-form').addEventListener('submit', function (event) {
+                submitSpecialDailyEvent(event);
+            });
+
+            var startDate = localStorage.getItem('sde-startDate') || "";
+            var keyword = localStorage.getItem('sde-keyword') || "";
+            var selectedStruct = localStorage.getItem('sde-selectedStruct') || "";
+            //var eventName = localStorage.getItem('sde-eventName') || "";
+
+            var startDateEl = document.getElementById('sde-date');
+            var keywordEl = document.getElementById('sde-keyword');
+            //var eventNameEl = document.getElementById('sde-eventName');
+
+            if (startDateEl) startDateEl.value = startDate;
+            if (keywordEl) keywordEl.value = keyword;
+            //if (eventNameEl) eventNameEl.value = eventName;
+
+            if (selectedStruct) {
+                var selectedValues = selectedStruct.split(',').map(s => s.trim());
+                document.querySelectorAll('#quartiereSDE option, #congressSDE option').forEach(option => {
+                    option.selected = selectedValues.includes(option.value);
+                });
+            } else {
+                document.querySelectorAll('#quartiereSDE option, #congressSDE option').forEach(option => {
+                    option.selected = false;
+                });
+            }
+
+            checkLastUpdateSDE();
+        }
+
+        /**
+         * Special Daily Event submit
+         */
+        function submitSpecialDailyEvent(event) {
+            console.log('submitSpecialDailyEvent chiamata');
+
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            var details = document.getElementById('sde-detailsSection');
+            var startDateEl = document.getElementById('sde-date');
+
+            console.log('Date value:', startDateEl.value);
+
+            // Controlla se il campo data è vuoto
+            if (!startDateEl.value) {
+                console.log('Campo data mancante, apro details e esco');
+
+                if (details) {
+                    details.open = true;
+                }
+
+                startDateEl.focus();
+                alert(translate('alert.missingDate') || 'Devi inserire una data.');
+                return false;
+            }
+
+            console.log('Validazione data passata, continuo...');
+
+            if (details) {
+                details.open = true;
+            }
+
+            var first = startDateEl.value;
+            var keyword = document.getElementById('sde-keyword').value;
+            //var eventName = document.getElementById('sde-eventName').value;
+
+            // Salva i dati
+            var selectElementQ = document.getElementById('quartiereSDE');
+            var selectElementC = document.getElementById('congressSDE');
+
+            var selectedValuesQ = Array.from(selectElementQ.selectedOptions, option => option.value);
+            var selectedValuesC = Array.from(selectElementC.selectedOptions, option => option.value);
+
+            var selectedStruct = [...selectedValuesQ, ...selectedValuesC].join(', ');
+
+            localStorage.setItem('sde-startDate', first);
+            localStorage.setItem('sde-keyword', keyword);
+            //localStorage.setItem('sde-eventName', eventName);
+            localStorage.setItem('sde-selectedStruct', selectedStruct);
+
+            const button = document.getElementById('sde-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewCalendarPage.goUpdateTr');
+            }, 20000);
+
+            localStorage.setItem('sde-lastUpdate', Date.now());
+            checkLastUpdateSDE();
+
+            console.log('Validazione completa, eseguo le chiamate server');
+
+            google.script.run.updateTimeUser();
+            google.script.run.createDailyScheduleFromCalendar(first, 60, keyword, selectedStruct, 'H24');
+
+            // CHIUSURA IMMEDIATA (fuori dai gestori success/failure)
+            //const details = document.getElementById('se-detailsSection');
+            if (details) {
+                details.open = false;
+            }
+
+            return false;
+        }
+
+        /**
+         * Reset Special Daily Event form
+         */
+        function resetSpecialDailyEventForm() {
+            localStorage.removeItem('sde-startDate');
+            localStorage.removeItem('sde-keyword');
+            //localStorage.removeItem('sde-eventName');
+            localStorage.removeItem('sde-selectedStruct');
+
+            document.getElementById("sde-form").reset();
+
+            document.getElementById("sde-date").value = "";
+            document.getElementById("sde-keyword").value = "";
+            //document.getElementById("sde-eventName").value = "";
+
+            document.querySelectorAll("#quartiereSDE option, #congressSDE option").forEach(option => {
+                option.selected = false;
+            });
+
+            var messageEl = document.getElementById("sde-message");
+            if (messageEl) {
+                messageEl.style.display = "none";
+            }
+
+            var updateMessageEl = document.getElementById("sde-updateMessage");
+            if (updateMessageEl) {
+                updateMessageEl.style.display = "none";
+            }
+        }
+
+        /**
+         * Special Daily Event - New Event button
+         */
+        function sdeNewEvent() {
+            const button = document.getElementById('sde-newEvent');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.newEvent');
+            }, 20000);
+
+            google.script.run.specialNewDailyEvent();
+        }
+
+        /**
+         * Special Daily Event - Update Specific Event button
+         */
+        function sdeUpdateSpecificEvent() {
+            var first = document.getElementById("sde-date").value;
+
+            const button = document.getElementById('sde-aggiornaSpec');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.upSpec');
+            }, 20000);
+
+            google.script.run.specialUpdateDailyEvent(first);
+        }
+
+        /**
+         * Special Daily Event - Delete Event button
+         */
+        function sdeDeleteEvent() {
+            var first = document.getElementById("sde-date").value;
+
+            const button = document.getElementById('sde-cancella');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.delEvent');
+            }, 20000);
+
+            google.script.run.specialDeleteDailyEvent(first);
+        }
+
+        // Avvia il controllo ogni 60 secondi per il messaggio di aggiornamento
+        setInterval(checkLastUpdateSDE, 60000);
+
+
+        /**
+         * Attach date validation to all date input pairs
+         */
+        function attachDateValidation() {
+            const datePairs = [
+                { start: 'se-startDate', finish: 'se-finishDate' },      // Special Event
+                { start: 'vc-startDate', finish: 'vc-finishDate' },      // View Calendar
+                { start: 'vl-startDate', finish: 'vl-finishDate' },      // View List
+                { start: 'vdp-startDate', finish: 'vdp-finishDate' }     // View Daily Plan
+            ];
+
+            datePairs.forEach(pair => {
+                const startEl = document.getElementById(pair.start);
+                const finishEl = document.getElementById(pair.finish);
+
+                if (startEl && finishEl) {
+                    // Validate on change of either date
+                    startEl.addEventListener('change', function () {
+                        validateDateRange(pair.start, pair.finish);
+                    });
+
+                    finishEl.addEventListener('change', function () {
+                        validateDateRange(pair.start, pair.finish);
+                    });
+                }
+            });
+        }
+
+        // Show a specific section and hide others
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            const targetSection = document.getElementById(sectionId + '-section');
+            if (targetSection) {
+                targetSection.classList.add('active');
+
+                // Initialize Special Event section when shown
+                if (sectionId === 'specialEvent') {
+                    initSpecialEvent();
+                }
+                // Initialize Special Daily Event section when shown
+                if (sectionId === 'specialDailyEvent') {
+                    initSpecialDailyEvent();
+                }
+            }
+        }
+
+        // Generate menu buttons based on permission
+        function generateMenuButtons() {
+            const container = document.getElementById('buttonContainer');
+            container.innerHTML = ''; // Clear existing buttons
+
+            function handleButtonClick(button, originalText, callback) {
+                button.innerText = translate('viewCalendarPage.waitTr');
+                button.disabled = true;
+                callback();
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.disabled = false;
+                }, 20000);
+            }
+
+            // Admin and Writer buttons
+            if (permission === 'writer' || permission === 'admin') {
+                const specialButton = document.createElement('button');
+                specialButton.classList.add('menu-button', 'calendar-button');
+                specialButton.innerHTML = '<i class="fa-solid fa-screwdriver-wrench"></i> ' + translate('sidebar.specialEvent');
+                specialButton.onclick = function () {
+                    showSection('specialEvent');
+                };
+                container.appendChild(specialButton);
+
+                const editButton = document.createElement('button');
+                editButton.classList.add('menu-button', 'hall-button');
+                editButton.innerHTML = '<i class="fa-solid fa-pen"></i> ' + translate('menu.specialDailyEvent');
+                editButton.onclick = function () {
+                    showSection('specialDailyEvent');
+                };
+                container.appendChild(editButton);
+            }
+
+            // Always visible buttons
+            const viewCalendarButton = document.createElement('button');
+            viewCalendarButton.classList.add('menu-button', 'visualizza-button');
+            viewCalendarButton.innerHTML = '<i class="fa-solid fa-square-poll-horizontal"></i> ' + translate('sidebar.showEventGantt');
+            viewCalendarButton.onclick = function () {
+                //initViewCalendar();
+                showSection('viewCalendar');
+            };
+            container.appendChild(viewCalendarButton);
+
+            const viewRoomButton = document.createElement('button');
+            viewRoomButton.classList.add('menu-button', 'visualizza-button');
+            viewRoomButton.innerHTML = '<i class="fa-solid fa-square-poll-horizontal"></i> ' + translate('sidebar.showDailyEvent');
+            viewRoomButton.onclick = function () {
+                //initViewDailyCalendar();              
+                showSection('viewDailyCalendar');
+            };
+            container.appendChild(viewRoomButton);
+
+            const viewPlanButton = document.createElement('button');
+            viewPlanButton.classList.add('menu-button', 'visualizza-button');
+            viewPlanButton.innerHTML = '<i class="fa-solid fa-map-location-dot"></i> ' + translate('sidebar.showPlanEvent');
+            viewPlanButton.onclick = function () {
+                //initViewDailyPlan();
+                showSection('viewDailyPlan');
+            };
+            container.appendChild(viewPlanButton);
+
+            const viewListButton = document.createElement('button');
+            viewListButton.classList.add('menu-button', 'visualizza-button');
+            viewListButton.innerHTML = '<i class="fa-solid fa-table-list"></i> ' + translate('sidebar.showReportEvent');
+            viewListButton.onclick = function () {
+                //initViewList();
+                showSection('viewList');
+            };
+            container.appendChild(viewListButton);
+        }
+
+        // Initialize View Calendar section
+        function initViewCalendar() {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            document.getElementById('vc-startDate').valueAsDate = firstDay;
+            document.getElementById('vc-finishDate').valueAsDate = lastDay;
+
+            // No need to populate - already populated on page load
+        }
+
+        // Initialize View Calendar section
+        function initViewDailyPlan() {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            document.getElementById('vdp-startDate').valueAsDate = firstDay;
+            document.getElementById('vdp-finishDate').valueAsDate = lastDay;
+
+            // No need to populate - already populated on page load
+        }
+
+        // Initialize View Daily Calendar section
+        function initViewDailyCalendar() {
+            const today = new Date();
+            document.getElementById('vdc-date').valueAsDate = today;
+
+            // No need to populate - already populated on page load
+
+            // Call server to create slide
+            /*
+            google.script.run
+                .withSuccessHandler(function() {
+                    console.log('Daily calendar initialized');
+                })
+                .initDailyCalendarView(formatDate(today));
+            */
+        }
+
+        // Initialize View List section
+        function initViewList() {
+            const today = new Date();
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            document.getElementById('vl-startDate').valueAsDate = today;
+            document.getElementById('vl-finishDate').valueAsDate = lastDay;
+
+            // No need to populate - already populated on page load
+
+            // Show edit buttons only for writers and admins
+            if (permission === 'writer' || permission === 'admin') {
+                document.getElementById('vl-titleHead').style.display = 'block';
+                document.getElementById('vl-aggiornaDet').style.display = 'block';
+                document.getElementById('vl-aggiornaSpec').style.display = 'block';
+                document.getElementById('vl-cancella').style.display = 'block';
+            }
+        }
+
+        // Format date for server calls
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // View Calendar submit
+        function submitViewCalendar(event) {
+            event.preventDefault();
+
+            const startDateEl = document.getElementById('vc-startDate');
+            const finishDateEl = document.getElementById('vc-finishDate');
+
+            // Check if dates are empty
+            if (!startDateEl.value || !finishDateEl.value) {
+                alert(translate('alert.missingDates') || 'Devi inserire una data di inizio e fine.');
+                if (!startDateEl.value) {
+                    startDateEl.focus();
+                } else {
+                    finishDateEl.focus();
+                }
+                return false;
+            }
+
+            const startDate = startDateEl.value;
+            const finishDate = finishDateEl.value;
+
+            // Validate date range
+            if (new Date(startDate) > new Date(finishDate)) {
+                document.getElementById('vc-message').innerHTML = '<span style="color:red;font-weight:bold;">⚠️ ' +
+                    (translate('alertHtml.messageDate') || 'La data iniziale non può essere successiva alla data finale!') +
+                    '</span>';
+                document.getElementById('vc-message').style.display = 'block';
+                finishDateEl.focus();
+                return false;
+            }
+
+            const selectedStructs = getSelectedStructures();
+            const keyword = document.getElementById('vc-keyword').value;
+
+            const button = document.getElementById('vc-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    //document.getElementById('vc-message').innerHTML = translate('viewCalendarPage.successTr') || 'Operation completed!';
+                })
+                .withFailureHandler(function (error) {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    alert('Error: ' + error);
+                })
+                .showOldMonths(startDate, finishDate, selectedStructs, keyword, '');
+        }
+
+        // View Daily Calendar submit
+        function submitViewDailyCalendar(event) {
+            event.preventDefault();
+
+            const date = document.getElementById('vdc-date').value;
+            const selectedStructs = getSelectedStructures();
+            const cosa = document.getElementById('vdc-cosa').value;
+            const keyword = document.getElementById('vdc-keyword').value;
+
+            const button = document.getElementById('vdc-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    document.getElementById('vdc-message').innerHTML = translate('viewCalendarPage.successTr') || 'Operation completed!';
+                })
+                .withFailureHandler(function (error) {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    alert('Error: ' + error);
+                })
+                //.createSlideAndExportToSheet(date, date, viewType, selectedStructs, 'NO');
+                .createDailyScheduleFromCalendar(date, cosa, keyword, selectedStructs);
+        }
+
+        // View List submit
+        function submitViewList(event) {
+            event.preventDefault();
+
+            const startDateEl = document.getElementById('vl-startDate');
+            const finishDateEl = document.getElementById('vl-finishDate');
+
+            // Check if dates are empty
+            if (!startDateEl.value || !finishDateEl.value) {
+                alert(translate('alert.missingDates') || 'Devi inserire una data di inizio e fine.');
+                if (!startDateEl.value) {
+                    startDateEl.focus();
+                } else {
+                    finishDateEl.focus();
+                }
+                return false;
+            }
+
+            const startDate = startDateEl.value;
+            const finishDate = finishDateEl.value;
+
+            // Validate date range
+            if (new Date(startDate) > new Date(finishDate)) {
+                document.getElementById('vl-message').innerHTML = '<span style="color:red;font-weight:bold;">⚠️ ' +
+                    (translate('alertHtml.messageDate') || 'La data iniziale non può essere successiva alla data finale!') +
+                    '</span>';
+                document.getElementById('vl-message').style.display = 'block';
+                finishDateEl.focus();
+                return false;
+            }
+
+            const cosa = getMultiSelectValues('vl-cosa');
+            const selectedStructs = getSelectedStructures();
+            const keyword = document.getElementById('vl-keyword').value;
+            const come = document.getElementById('vl-come').value;
+
+            const button = document.getElementById('vl-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    document.getElementById('vl-message').innerHTML = translate('viewCalendarPage.successTr') || 'Operation completed!';
+                })
+                .withFailureHandler(function (error) {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    alert('Error: ' + error);
+                })
+                .createListEvent(startDate, finishDate, cosa, selectedStructs, keyword, come);
+        }
+
+        // View Daily Plan submit
+        function submiDailyPlan(event) {
+            event.preventDefault();
+
+            const startDateEl = document.getElementById('vdp-startDate');
+            const finishDateEl = document.getElementById('vdp-finishDate');
+
+            // Check if dates are empty
+            if (!startDateEl.value || !finishDateEl.value) {
+                alert(translate('alert.missingDates') || 'Devi inserire una data di inizio e fine.');
+                if (!startDateEl.value) {
+                    startDateEl.focus();
+                } else {
+                    finishDateEl.focus();
+                }
+                return false;
+            }
+
+            const startDate = startDateEl.value;
+            const finishDate = finishDateEl.value;
+
+            // Validate date range
+            if (new Date(startDate) > new Date(finishDate)) {
+                document.getElementById('vdp-message').innerHTML = '<span style="color:red;font-weight:bold;">⚠️ ' +
+                    (translate('alertHtml.messageDate') || 'La data iniziale non può essere successiva alla data finale!') +
+                    '</span>';
+                document.getElementById('vdp-message').style.display = 'block';
+                finishDateEl.focus();
+                return false;
+            }
+
+            //const selectedStructs = getSelectedStructures();
+            const keyword = document.getElementById('vdp-keyword').value;
+            const cosa = document.getElementById('vdp-cosa').value;
+            const editable = document.getElementById('vdp-editable').value;
+
+            const button = document.getElementById('vdp-submitButton');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    document.getElementById('vdp-message').innerHTML = translate('viewCalendarPage.successTr') || 'Operation completed!';
+                })
+                .withFailureHandler(function (error) {
+                    button.disabled = false;
+                    button.innerText = translate('viewCalendarPage.goButtonTr');
+                    alert('Error: ' + error);
+                })
+                //.showOldMonths(startDate, finishDate, selectedStructs, keyword, '');
+                .createSlideAndExportToSheet(startDate, finishDate, cosa, keyword, editable);
+        }
+
+        // Helper function to get selected structures
+        function getSelectedStructures() {
+            const selected = new Set(); // evita duplicati
+
+            // Define all the select IDs that need to be populated
+            const structureSelectPairs = [
+                { quartiere: 'quartiereSE', congress: 'congressSE' },  // Special Event
+                { quartiere: 'quartiereSDE', congress: 'congressSDE' },  // Special Daily Event
+                { quartiere: 'quartiereVC', congress: 'congressVC' },  // View Calendar
+                { quartiere: 'quartiereVDC', congress: 'congressVDC' },  // View Daily Calendar
+                { quartiere: 'quartiereVL', congress: 'congressVL' },  // View List Calendar
+                { quartiere: 'quartiereVDP', congress: 'congressVDP' } // View Daily Plan
+            ];
+
+            structureSelectPairs.forEach(pair => {
+                const quartiereEl = document.getElementById(pair.quartiere);
+                const congressEl = document.getElementById(pair.congress);
+
+                if (quartiereEl) {
+                    for (const option of quartiereEl.selectedOptions) {
+                        selected.add(option.value);
+                    }
+                }
+
+                if (congressEl) {
+                    for (const option of congressEl.selectedOptions) {
+                        selected.add(option.value);
+                    }
+                }
+            });
+
+            return Array.from(selected).join(',');
+        }
+
+        // Helper function to get multi-select values
+        function getMultiSelectValues(id) {
+            const select = document.getElementById(id);
+            const values = [];
+            for (let option of select.selectedOptions) {
+                values.push(option.value);
+            }
+            return values.join(',');
+        }
+
+        // View List edit functions
+        /*
+        function updateDetailsEvent() {
+            const button = document.getElementById('vl-aggiornaDet');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            const startDate = document.getElementById('vl-startDate').value;
+            const finishDate = document.getElementById('vl-finishDate').value;
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.upGeneral');
+            }, 20000);
+
+            google.script.run.getCellListNote('updateDetailsEvent', startDate, finishDate);
+        }
+
+        function updateSpecificEvent() {
+            const button = document.getElementById('vl-aggiornaSpec');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            const startDate = document.getElementById('vl-startDate').value;
+            const finishDate = document.getElementById('vl-finishDate').value;
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.upSpec');
+            }, 20000);
+
+            google.script.run.getCellListNote('updateSpecificEvent', startDate, finishDate);
+        }
+
+        function deleteEvent() {
+            const button = document.getElementById('vl-cancella');
+            button.disabled = true;
+            button.innerText = translate('viewCalendarPage.waitTr');
+
+            const startDate = document.getElementById('vl-startDate').value;
+            const finishDate = document.getElementById('vl-finishDate').value;
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.innerText = translate('viewList.delEvent');
+            }, 20000);
+
+            google.script.run.getCellListNote('deleteEvent', startDate, finishDate);
+        }
+        */
+function loadNote(what) {
+
+  const first = document.getElementById('vl-startDate').value;
+  const last  = document.getElementById('vl-finishDate').value;
+
+  google.script.run
+    .withSuccessHandler(function(note) {
+
+      if (!note) {
+        //alert(translate('viewList.noNoteFound'));
+        return;
+      }
+
+      console.log('Nota ricevuta:', note);
+
+      // 👉 QUI TORNA LA LOGICA DI PRIMA
+      switch (what) {
+
+        case 'updateDetailsEvent':
+          handleUpdateDetails(note);
+          break;
+
+        case 'updateSpecificEvent':
+          handleUpdateSpecific(note);
+          break;
+
+        case 'deleteEvent':
+          handleDeleteEvent(note);
+          break;
+      }
+
+    })
+    .getCellListNote(what, first, last);
+}
+
+function updateDetailsEvent() {
+  disableButton('vl-aggiornaDet', 'viewList.upGeneral');
+  loadNote('updateDetailsEvent');
+}
+
+function updateSpecificEvent() {
+  disableButton('vl-aggiornaSpec', 'viewList.upSpec');
+  loadNote('updateSpecificEvent');
+}
+
+function deleteEvent() {
+  disableButton('vl-cancella', 'viewList.delEvent');
+  loadNote('deleteEvent');
+}
+
+function disableButton(id, labelKey) {
+  const btn = document.getElementById(id);
+  btn.disabled = true;
+  btn.innerText = translate('viewCalendarPage.waitTr');
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerText = translate(labelKey);
+  }, 20000);
+}
+
+
+        // Reset form functions
+        function resetForm(formId) {
+            document.getElementById(formId).reset();
+            const messageId = formId.replace('-form', '-message');
+            const messageEl = document.getElementById(messageId);
+            if (messageEl) {
+                messageEl.style.display = 'none';
+            }
+        }
+
+        // Initialize on page load
+        window.onload = initialize;
+    </script>
+</head>
+
+<body>
+    <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+
+    <!-- MENU SECTION -->
+    <div id="menu-section" class="section">
+        <div class="button-menu-container" id="buttonContainer">
+            <!-- Buttons will be generated here -->
+        </div>
+    </div>
+
+    <!-- SPECIAL EVENT SECTION -->
+    <div id="specialEvent-section" class="section special-page">
+        <h4 class="align">
+            <?= translate('main.specialEvent') ?>
+        </h4>
+        <form id="se-form">
+
+            <details id="se-detailsSection">
+                <summary>
+                    <?= translate('specialEvent.filter') ?>
+                </summary>
+
+                <div class="row mb-3">
+                    <label for="startDate" class="col-sm-12 col-form-label">
+                        <?= translate('viewCalendarPage.startDateTr') ?>
+                    </label>
+                    <div class="col-sm-12">
+                        <input type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                            name="startDate" id="se-startDate" placeholder="Inizio">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="finishDate" class="col-sm-12 col-form-label">
+                        <?= translate('viewCalendarPage.endDateTr') ?>
+                    </label>
+
+                    <div class="col-sm-12">
+                        <input type="date" data-date-format="dd/mm/yyyy" class="form-control form-control-lg" value=""
+                            name="finishDate" id="se-finishDate" placeholder="Fine">
+                    </div>
+                </div>
+
+                <h6>
+                    <?= translate('viewCalendarPage.findStuctTr') ?>
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-sm-10">
+                        <label>
+                            <?= translate('viewCalendarPage.sideQTr') ?>
+                        </label><br />
+                        <select style="width: 100%;" id="quartiereSE" multiple multiselect-search="true"
+                            multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                        </select>
+
+                        <label>
+                            <?= translate('viewCalendarPage.sideCCTr') ?>
+                        </label><br />
+                        <select style="width: 100%;" id="congressSE" multiple multiselect-search="true"
+                            multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                        </select>
+                    </div>
+                </div>
+
+                <h6>
+                    <?= translate('viewCalendarPage.findWordTr') ?>
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control form-control-sm" name="keyword" id="se-keyword"
+                            placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                    </div>
+                </div>
+
+            </details>
+
+            <div class="button-container">
+                <div id="se-message" style="display: none;"></div>
+                <button id="se-submitButton" type="button" onclick="submitSpecialEvent(event)">
+                    <?= translate('viewCalendarPage.goUpdateTr') ?>
+                </button>
+                <button type="button" onclick="resetSpecialEventForm()">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+
+            <div id="se-updateMessage" style="display:none;color:red;font-weight:bold;margin-top:2px;">
+                ⚠️
+                <?= translate('specialEvent.tip') ?>
+            </div>
+
+        </form>
+
+        <h6 id="se-titleHead">
+            <?= translate('specialEvent.info') ?>
+        </h6>
+
+        <div class="button-container">
+            <button id="se-newEvent" onclick="seNewEvent()">
+                <?= translate('viewList.newEvent') ?>
+            </button>
+            <button id="se-aggiornaSpec" onclick="seUpdateSpecificEvent()">
+                <?= translate('viewList.upSpec') ?>
+            </button>
+            <button id="se-cancella" onclick="seDeleteEvent()">
+                <?= translate('viewList.delEvent') ?>
+            </button>
+        </div>
+    </div>
+
+    <!-- SPECIAL DAILY EVENT SECTION -->
+    <div id="specialDailyEvent-section" class="section specialDaily-page">
+        <h4 class="align">
+            <?= translate('menu.specialDailyEvent') ?>
+        </h4>
+        <form id="sde-form">
+
+            <details id="sde-detailsSection">
+                <summary>
+                    <?= translate('specialEvent.filter') ?>
+                </summary>
+
+                <div class="row mb-3">
+                    <label for="sde-date" class="col-sm-2 col-form-label">
+                        <?= translate('viewCalendarPage.startDateTr') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <input type="date" class="form-control form-control-lg" name="startDate" id="sde-date">
+                    </div>
+                </div>
+
+                <h6>
+                    <?= translate('viewCalendarPage.findStuctTr') ?>
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-sm-10">
+                        <label>
+                            <?= translate('viewCalendarPage.sideQTr') ?>
+                        </label><br />
+                        <select style="width: 100%;" id="quartiereSDE" multiple multiselect-search="true"
+                            multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                        </select>
+
+                        <label>
+                            <?= translate('viewCalendarPage.sideCCTr') ?>
+                        </label><br />
+                        <select style="width: 100%;" id="congressSDE" multiple multiselect-search="true"
+                            multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10">
+                        </select>
+                    </div>
+                </div>
+
+                <h6>
+                    <?= translate('viewCalendarPage.findWordTr') ?>
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control form-control-sm" name="keyword" id="sde-keyword"
+                            placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                    </div>
+                </div>
+
+                <!-- <h6>
+                    <?= translate('addEventPage.eventName') || 'Event Name' ?>
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control form-control-lg" name="eventName" id="sde-eventName"
+                            placeholder="<?= translate('addEventPage.eventName') || 'Event Name' ?>">
+                    </div>
+                </div> -->
+
+            </details>
+
+            <div class="button-container">
+                <div id="sde-message" style="display: none;"></div>
+                <button id="sde-submitButton" type="submit">
+                    <?= translate('viewCalendarPage.goUpdateTr') ?>
+                </button>
+                <button type="button" onclick="resetSpecialDailyEventForm()">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+
+            <div id="sde-updateMessage" style="display:none;color:red;font-weight:bold;margin-top:2px;">
+                ⚠️
+                <?= translate('specialEvent.tip') ?>
+            </div>
+
+        </form>
+
+        <h6 id="sde-titleHead">
+            <?= translate('specialEvent.info') ?>
+        </h6>
+
+        <div class="button-container">
+            <button id="sde-newEvent" onclick="sdeNewEvent()">
+                <?= translate('viewList.newEvent') ?>
+            </button>
+            <button id="sde-aggiornaSpec" onclick="sdeUpdateSpecificEvent()">
+                <?= translate('viewList.upSpec') ?>
+            </button>
+            <button id="sde-cancella" onclick="sdeDeleteEvent()">
+                <?= translate('viewList.delEvent') ?>
+            </button>
+        </div>
+    </div>
+
+    <!-- VIEW CALENDAR SECTION -->
+    <div id="viewCalendar-section" class="section">
+        <h6 class="align">
+            <?= translate('sidebar.showEventGantt') ?>
+        </h6>
+        <form id="vc-form" onsubmit="submitViewCalendar(event); return false;">
+            <div class="row mb-3">
+                <label for="vc-startDate" class="col-sm-2 col-form-label">
+                    <?= translate('viewCalendarPage.startDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vc-startDate">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <label for="vc-finishDate" class="col-sm-2 col-form-label">
+                    <?= translate('viewCalendarPage.endDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vc-finishDate">
+                </div>
+            </div>
+            <h6>
+                <?= translate('planPage.whatView') ?>
+            </h6>
+            <div class="row mb-3">
+                <div class="col-sm-10">
+                    <label>
+                        <?= translate('addEventPage.selQcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="quartiereVC" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                    <label>
+                        <?= translate('addEventPage.selCcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="congressVC" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                </div>
+            </div>
+            <h6>
+                <?= translate('viewCalendarPage.findWordTr') ?>
+            </h6>
+            <div class="row mb-3">
+                <div class="col-sm-10">
+                    <input type="text" class="form-control form-control-sm" id="vc-keyword"
+                        placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                </div>
+            </div>
+            <div class="button-container">
+                <div id="vc-message" style="display: none;"></div>
+                <button id="vc-submitButton" type="submit">
+                    <?= translate('viewCalendarPage.goButtonTr') ?>
+                </button>
+                <button type="button" onclick="resetForm('vc-form')">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+        </form>
+
+        <h6>
+            <?= translate('viewCalendarPage.stats') ?>
+        </h6>
+        <div class="button-container">
+            <button id="statsRows" onclick="statsRows()">
+                <?= translate('viewCalendarPage.statsRows') ?>
+            </button>
+            <button id="statsColumns" onclick="statsColumns()">
+                <?= translate('viewCalendarPage.statsColumns') ?>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- VIEW DAILY CALENDAR SECTION -->
+    <div id="viewDailyCalendar-section" class="section">
+        <h6 class="align">
+            <?= translate('sidebar.showDailyEvent') ?>
+        </h6>
+        <form id="vdc-form" onsubmit="submitViewDailyCalendar(event); return false;">
+            <div class="row mb-3">
+                <label for="vdc-date" class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.startDateTr') || 'Date' ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vdc-date">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <label for="cosa" class="col-sm-12 col-form-label">
+                    <?= translate('hourMenuPage.selecTimeInt') ?>
+                </label>
+                <div class="col-sm-10">
+                    <select required class="form-control form-control-lg" name="cosa" id="vdc-cosa"
+                        onchange="toggleUpdateButton()">
+                        <option value='15'>
+                            <?= translate('hourMenuPage.fiftMin') ?>
+                        </option>
+                        <option value='30'>
+                            <?= translate('hourMenuPage.therMin') ?>
+                        </option>
+                        <option selected value='60'>
+                            <?= translate('hourMenuPage.sixMin') ?>
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <h6>
+                <?= translate('planPage.whatView') ?>
+            </h6>
+            <div class="row mb-3">
+                <div class="col-sm-10">
+                    <label>
+                        <?= translate('addEventPage.selQcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="quartiereVDC" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                    <label>
+                        <?= translate('addEventPage.selCcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="congressVDC" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                </div>
+            </div>
+            <h6>
+                <?= translate('viewCalendarPage.findWordTr') ?>
+            </h6>
+            <div class="row mb-3">
+                <!-- <label for="org" class="col-sm-2 col-form-label">Organizzatore</label> -->
+                <div class="col-sm-10">
+                    <input type="text" class="form-control form-control-sm" value="" name="keyword" id="vdc-keyword"
+                        placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                </div>
+            </div>
+            <div class="button-container">
+                <div id="vdc-message" style="display: none;"></div>
+                <button id="vdc-submitButton" type="submit">
+                    <?= translate('viewCalendarPage.goButtonTr') ?>
+                </button>
+                <button type="button" onclick="resetForm('vdc-form')">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- VIEW LIST SECTION -->
+    <div id="viewList-section" class="section">
+        <h6 class="align">
+            <?= translate('sidebar.showReportEvent') ?>
+        </h6>
+        <form id="vl-form" onsubmit="submitViewList(event); return false;">
+            <div class="row mb-3">
+                <label for="vl-startDate" class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.startDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vl-startDate">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <label for="vl-finishDate" class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.endDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vl-finishDate">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <label for="vl-cosa" class="col-sm-12 col-form-label">
+                    <?= translate('viewList.whatSee') ?>
+                </label>
+                <div class="col-sm-10">
+                    <select class="form-control form-control-lg" id="vl-cosa" multiple>
+                        <option value='P'>
+                            <?= translate('viewList.labelP') ?>
+                        </option>
+                        <option value='A'>
+                            <?= translate('viewList.labelA') ?>
+                        </option>
+                        <option selected value='E'>
+                            <?= translate('viewList.labelE') ?>
+                        </option>
+                        <option value='D'>
+                            <?= translate('viewList.labelD') ?>
+                        </option>
+                        <option value='L'>
+                            <?= translate('viewList.labelW') ?>
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <label for="vl-come" class="col-sm-12 col-form-label">
+                    <?= translate('viewList.whichMode') ?>
+                </label>
+                <div class="col-sm-10">
+                    <select class="form-control form-control-lg" id="vl-come">
+                        <option selected value='agg'>
+                            <?= translate('viewList.grouped') ?>
+                        </option>
+                        <option value='day'>
+                            <?= translate('viewList.listed') ?>
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <h6>
+                <?= translate('planPage.whatView') ?>
+            </h6>
+            <div class="row mb-3">
+                <div class="col-sm-10">
+                    <label>
+                        <?= translate('addEventPage.selQcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="quartiereVL" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                    <label>
+                        <?= translate('addEventPage.selCcenter') ?>
+                    </label>
+                    <select style="width: 100%;" id="congressVL" multiple multiselect-search="true"
+                        multiselect-select-all="true" multiselect-hide-x="true" multiselect-max-items="10"></select>
+                </div>
+            </div>
+            <h6>
+                <?= translate('viewCalendarPage.findWordTr') ?>
+            </h6>
+            <div class="row mb-3">
+                <div class="col-sm-10">
+                    <input type="text" class="form-control form-control-sm" id="vl-keyword"
+                        placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                </div>
+            </div>
+            <div class="button-container">
+                <div id="vl-message" style="display: block;"></div>
+                <button id="vl-submitButton" type="submit">
+                    <?= translate('viewCalendarPage.goButtonTr') ?>
+                </button>
+                <button type="button" onclick="resetForm('vl-form')">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+        </form>
+
+        <div id="vl-noteContent"></div>
+        <h6 id="vl-titleHead" style="display: block;">
+            <?= translate('viewList.editMenu') ?>
+        </h6>
+        <div class="button-container">
+            <button id="vl-aggiornaDet" style="display: block;" onclick="updateDetailsEvent()">
+                <?= translate('viewList.upGeneral') ?>
+            </button>
+            <button id="vl-aggiornaSpec" style="display: block;" onclick="updateSpecificEvent()">
+                <?= translate('viewList.upSpec') ?>
+            </button>
+            <button id="vl-cancella" style="display: block;" onclick="deleteEvent()">
+                <?= translate('viewList.delEvent') ?>
+            </button>
+        </div>
+    </div>
+
+<!-- VIEW PLAN SECTION (MIGLIORATA) -->
+<div id="viewDailyPlan-section" class="section">
+    <h6 class="align">
+        <?= translate('sidebar.showPlanEvent') ?>
+    </h6>
+    
+    <!-- STEP 1: CONFIGURAZIONE BASE -->
+    <form id="vdp-form-step1">
+        <details open>
+            <summary><?= translate('planPage.step1Config') || 'Step 1: Configurazione Base' ?></summary>
+            
+            <div class="row mb-3">
+                <label for="vdp-startDate" class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.startDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vdp-startDate">
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <label for="vdp-finishDate" class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.endDateTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input required type="date" class="form-control form-control-lg" id="vdp-finishDate">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label for="cosa" class="col-sm-12 col-form-label">
+                    <?= translate('planPage.whatView') ?>
+                </label>
+                <div class="col-sm-10">
+                    <select required class="form-control form-control-lg" name="cosa" id="vdp-cosa">
+                        <option disabled selected value>
+                            <?= translate('addEventPage.chooseList') ?>
+                        </option>
+                        <option value='cc'>
+                            <?= translate('addEventPage.selCcenter') ?>
+                        </option>
+                        <option value='quartiere'>
+                            <?= translate('addEventPage.selQcenter') ?>
+                        </option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <label class="col-sm-12 col-form-label">
+                    <?= translate('viewCalendarPage.findWordTr') ?>
+                </label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control form-control-sm" id="vdp-keyword"
+                        placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label for="editable" class="col-sm-12 col-form-label">
+                    <?= translate('planPage.editSlide') ?>
+                </label>
+                <div class="col-sm-10">
+                    <select class="form-control form-control-lg" name="editable" id="vdp-editable">
+                        <option selected value='NO'>NO</option>
+                        <option value='SI'>
+                            <?= translate('addEventPage.chooseYes') ?>
+                        </option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="button-container">
+                <button type="button" id="vdp-loadEventsBtn" onclick="loadEventsForColorAssignment()">
+                    <?= translate('planPage.loadEvents') || '🔍 Carica Eventi' ?>
+                </button>
+            </div>
+        </details>
+    </form>
+
+    <!-- STEP 2: ASSEGNAZIONE COLORI -->
+    <form id="vdp-form-step2" style="display: none;">
+        <details open>
+            <summary><?= translate('planPage.step2Colors') || 'Step 2: Assegna Colori' ?></summary>
+            
+            <div id="vdp-colorAssignment" style="margin: 15px 0;">
+                <!-- Qui verrà caricata la tabella eventi -->
+            </div>
+            
+            <div class="button-container">
+                <button type="button" onclick="saveColorAssignments()">
+                    <?= translate('planPage.saveColors') || '💾 Salva Colori' ?>
+                </button>
+                <button type="button" onclick="resetColorAssignments()">
+                    <?= translate('planPage.resetColors') || '🔄 Reset' ?>
+                </button>
+            </div>
+        </details>
+    </form>
+
+    <!-- STEP 3: GENERAZIONE -->
+    <form id="vdp-form-step3" style="display: none;">
+        <details open>
+            <summary><?= translate('planPage.step3Generate') || 'Step 3: Genera Slide' ?></summary>
+            
+            <div id="vdp-progress" style="margin: 15px 0; display: none;">
+                <p><strong id="vdp-progressText">Generazione in corso...</strong></p>
+                <div style="width: 100%; background: #ddd; height: 20px; border-radius: 10px;">
+                    <div id="vdp-progressBar" style="width: 0%; background: #4CAF50; height: 100%; border-radius: 10px; transition: width 0.3s;"></div>
+                </div>
+            </div>
+            
+            <div class="button-container">
+                <button type="button" id="vdp-generateBtn" onclick="generateSlidesWithColors()">
+                    <?= translate('planPage.startGeneration') || '🚀 Genera Slide' ?>
+                </button>
+                <button type="button" onclick="resetVDPForm()">
+                    <?= translate('viewCalendarPage.delAllFormTr') ?>
+                </button>
+            </div>
+            
+            <div id="vdp-message" style="margin-top: 15px;"></div>
+        </details>
+    </form>
+</div>
+
+    <script>
+// INIZIO NUOVA SEZIONE PLAN
+// ==========================================
+// COLOR ASSIGNMENT LOGIC
+// ==========================================
+
+// Colori disponibili (0-9)
+const COLOR_PALETTE = [
+    { id: 0, name: 'Blu pastello', hex: '#4a86e8' },
+    { id: 1, name: 'Rosso', hex: '#ff0000' },
+    { id: 2, name: 'Viola', hex: '#9900ff' },
+    { id: 3, name: 'Giallo', hex: '#ffff00' },
+    { id: 4, name: 'Blu', hex: '#0000ff' },
+    { id: 5, name: 'Rosso scuro', hex: '#980000' },
+    { id: 6, name: 'Verde', hex: '#00ff00' },
+    { id: 7, name: 'Ciano', hex: '#00ffff' },
+    { id: 8, name: 'Arancione', hex: '#ff9900' },
+    { id: 9, name: 'Magenta', hex: '#ff00ff' },
+    { id: 10, name: 'Grigio', hex: '#666666' }
+];
+
+let currentEvents = [];
+let colorAssignments = {};
+
+/**
+ * Step 1: Carica eventi dal periodo selezionato
+ */
+function loadEventsForColorAssignment() {
+    const startDate = document.getElementById('vdp-startDate').value;
+    const finishDate = document.getElementById('vdp-finishDate').value;
+    const keyword = document.getElementById('vdp-keyword').value;
+    
+    if (!startDate || !finishDate) {
+        alert(translate('alert.missingDates') || 'Inserisci le date!');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(finishDate)) {
+        alert(translate('alertHtml.messageDate') || 'Data iniziale > data finale!');
+        return;
+    }
+    
+    const btn = document.getElementById('vdp-loadEventsBtn');
+    btn.disabled = true;
+    btn.innerText = '⏳ Caricamento...';
+    
+    // Chiama il server per ottenere eventi unici
+    google.script.run
+        .withSuccessHandler(displayEventsForColorSelection)
+        .withFailureHandler(function(error) {
+            btn.disabled = false;
+            btn.innerText = '🔍 Carica Eventi';
+            alert('Errore: ' + error.message);
+        })
+        .getUniqueEventsForPeriod(startDate, finishDate, keyword);
+}
+
+/**
+ * Mostra tabella eventi per selezione colori
+ */
+function displayEventsForColorSelection(events) {
+  // Ripristina il bottone
+    const btn = document.getElementById('vdp-loadEventsBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerText = '🔍 Carica Eventi';
+    }
+    console.log('=== displayEventsForColorSelection chiamata ===');
+    console.log('Eventi ricevuti:', events);
+    
+    if (!events) {
+        console.error('Eventi è NULL o UNDEFINED');
+        alert('Errore: Nessun dato ricevuto dal server.');
+        return;
+    }
+    
+    if (!Array.isArray(events)) {
+        console.error('Eventi non è un array!');
+        alert('Errore: Dati nel formato errato.');
+        return;
+    }
+    
+    if (events.length === 0) {
+        console.warn('Array eventi vuoto');
+        alert('Nessun evento trovato nel periodo selezionato.');
+        return;
+    }
+    
+    console.log('✓ Eventi validi:', events.length);
+    
+    // Salva eventi
+    currentEvents = events;
+    
+    // Carica assegnazioni salvate
+    const saved = localStorage.getItem('vdp-colorAssignments');
+    console.log('LocalStorage vdp-colorAssignments:', saved);
+    
+    if (saved) {
+        try {
+            colorAssignments = JSON.parse(saved);
+            console.log('✓ Assegnazioni caricate:', colorAssignments);
+        } catch (e) {
+            console.error('✗ Errore parsing localStorage:', e);
+            colorAssignments = {};
+        }
+    } else {
+        console.log('Nessuna assegnazione salvata, creo nuova mappa');
+        colorAssignments = {};
+        
+        // ========================================
+        // CORREZIONE CRUCIALE: USA evt.acronym!
+        // ========================================
+        events.forEach((evt, idx) => {
+            // USA evt.acronym come chiave, NON idx!
+            colorAssignments[evt.acronym] = idx % 10;
+        });
+        // ========================================
+        
+        console.log('Mappa colori iniziale:', colorAssignments);
+    }
+    
+    // Genera tabella HTML
+    console.log('Generazione tabella HTML...');
+    let html = `
+        <style>
+            .color-table {
+                width: 250px;
+                border-collapse: collapse;
+                margin: 10px 0;
+                font-size: 10px;
+            }
+            .color-table th, .color-table td {
+                padding: 8px;
+                border: 1px solid #ddd;
+                text-align: left;
+            }
+            .color-table th {
+                background: #4CAF50;
+                color: white;
+                font-weight: bold;
+            }
+            .color-table tr:nth-child(even) {
+                background: #f9f9f9;
+            }
+            .color-select {
+                width: 20px;
+                padding: 5px;
+                font-size: 14px;
+            }
+            .color-preview {
+                width: 20px;
+                height: 30px;
+                border-radius: 5px;
+                display: inline-block;
+                border: 2px solid #333;
+            }
+        </style>
+        <p style="margin: 10px 0; font-weight: bold;">
+            🎨 ${events.length} eventi trovati - Assegna un colore a ciascuno:
+        </p>
+        <table class="color-table">
+            <thead>
+                <tr>
+                    <th style="width: 20px;">Ev.</th>
+                    <th style="width: 20px;">Ac.</th>
+                    <th style="width: 20px;">Co.</th>
+                    <th style="width: 10px;">Ant.</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    events.forEach((evt, idx) => {
+        const currentColor = colorAssignments[evt.acronym] || 0; // USA evt.acronym!
+        console.log(`  Riga ${idx}: ${evt.acronym} → Colore ${currentColor}`);
+        
+        html += `
+            <tr>
+                <td title="${evt.fullName}">${evt.shortName}</td>
+                <td><strong>${evt.acronym.slice(0, 9)}</strong></td>
+                <td>
+                    <select class="color-select" data-acronym="${evt.acronym}" onchange="updateColorPreview(this)">
+                        ${COLOR_PALETTE.map(c => 
+                            `<option value="${c.id}" ${c.id == currentColor ? 'selected' : ''}>${c.id} - ${c.name}</option>`
+                        ).join('')}
+                    </select>
+                </td>
+                <td>
+                    <span class="color-preview" id="preview-${evt.acronym}" 
+                          style="background: ${COLOR_PALETTE[currentColor].hex}"></span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+            <strong>💡 Suggerimento:</strong> I colori vengono salvati automaticamente.
+            Clicca "💾 Salva Colori" per confermare.
+        </p>
+    `;
+    
+    console.log('✓ Tabella HTML generata');
+    
+    const container = document.getElementById('vdp-colorAssignment');
+    if (!container) {
+        console.error('✗ Container vdp-colorAssignment non trovato!');
+        alert('Errore: Container HTML non trovato.');
+        return;
+    }
+    
+    container.innerHTML = html;
+    console.log('✓ HTML inserito nel DOM');
+    
+    // Mostra sezioni
+    document.getElementById('vdp-form-step2').style.display = 'block';
+    document.getElementById('vdp-form-step3').style.display = 'block';
+    console.log('✓ Sezioni step2 e step3 mostrate');
+    
+    console.log('=== displayEventsForColorSelection completata ===');
+}
+
+/**
+ * Aggiorna anteprima colore in tempo reale
+ */
+function updateColorPreview(selectElement) {
+    const acronym = selectElement.dataset.acronym;
+    const colorId = parseInt(selectElement.value);
+    const preview = document.getElementById(`preview-${acronym}`);
+    
+    preview.style.background = COLOR_PALETTE[colorId].hex;
+    colorAssignments[acronym] = colorId;
+}
+
+/**
+ * Salva assegnazioni colori
+ */
+function saveColorAssignments() {
+    console.log('=== saveColorAssignments chiamata ===');
+    
+    // Aggiorna tutte le assegnazioni dalla tabella
+    document.querySelectorAll('.color-select').forEach(select => {
+        const acronym = select.dataset.acronym; // ← Usa data-acronym, non indice!
+        colorAssignments[acronym] = parseInt(select.value);
+        console.log('  ' + acronym + ' → ' + select.value);
+    });
+    
+    console.log('Mappa finale da salvare:', colorAssignments);
+    
+    localStorage.setItem('vdp-colorAssignments', JSON.stringify(colorAssignments));
+    
+    console.log('✓ Salvato in localStorage');
+    console.log('=== saveColorAssignments completata ===');
+    
+    alert('✅ Assegnazione colori salvata!');
+}
+
+/**
+ * Reset assegnazioni colori
+ */
+function resetColorAssignments() {
+    if (!confirm('Vuoi davvero resettare tutti i colori?')) return;
+    
+    localStorage.removeItem('vdp-colorAssignments');
+    colorAssignments = {};
+    
+    // Ricarica eventi
+    if (currentEvents.length > 0) {
+        displayEventsForColorSelection(currentEvents);
+    }
+}
+
+/**
+ * Step 3: Genera slide con colori assegnati
+ */
+function generateSlidesWithColors() {
+    console.log('=== generateSlidesWithColors chiamata ===');
+    
+    saveColorAssignments(); // Salva prima di generare
+    
+    const startDate = document.getElementById('vdp-startDate').value;
+    const finishDate = document.getElementById('vdp-finishDate').value;
+    const keyword = document.getElementById('vdp-keyword').value;
+    const cosa = document.getElementById('vdp-cosa').value;
+    const editable = document.getElementById('vdp-editable').value;
+    
+    console.log('Parametri:');
+    console.log('  startDate:', startDate);
+    console.log('  finishDate:', finishDate);
+    console.log('  cosa:', cosa);
+    console.log('  editable:', editable);
+    console.log('  colorAssignments:', colorAssignments);
+    
+    const btn = document.getElementById('vdp-generateBtn');
+    btn.disabled = true;
+    btn.innerText = '⏳ Generazione...';
+    
+    // Mostra progress bar
+    document.getElementById('vdp-progress').style.display = 'block';
+    document.getElementById('vdp-progressText').innerText = 'Avvio generazione...';
+    document.getElementById('vdp-progressBar').style.width = '0%';
+    
+    // Calcola numero giorni
+    const days = Math.ceil((new Date(finishDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+    let currentDay = 0;
+    
+    console.log('Chiamata a createSlideAndExportToSheetImproved...');
+    
+    // Chiama funzione server con mappa colori
+    google.script.run
+        .withSuccessHandler(function(result) {
+            console.log('✓ Success:', result);
+            btn.disabled = false;
+            btn.innerText = '🚀 Genera Slide';
+            document.getElementById('vdp-progress').style.display = 'none';
+            document.getElementById('vdp-message').innerHTML = 
+                '<span style="color: green;">✅ Generazione completata!</span>';
+        })
+        .withFailureHandler(function(error) {
+            console.error('✗ Failure:', error);
+            btn.disabled = false;
+            btn.innerText = '🚀 Genera Slide';
+            document.getElementById('vdp-progress').style.display = 'none';
+            alert('Errore: ' + error.message);
+        })
+        .createSlideAndExportToSheetImproved(
+            startDate, 
+            finishDate, 
+            cosa, 
+            keyword, 
+            editable,
+            colorAssignments  // 👈 PASSA LA MAPPA CORRETTA
+        );
+    
+    console.log('=== generateSlidesWithColors completata (attesa risposta server) ===');
+    
+    // Simula progress (il server aggiornerà in realtà via UserProperties)
+    const progressInterval = setInterval(() => {
+        currentDay++;
+        const progress = Math.min((currentDay / days) * 100, 95);
+        document.getElementById('vdp-progressBar').style.width = progress + '%';
+        document.getElementById('vdp-progressText').innerText = 
+            `Elaborazione giorno ${currentDay} di ${days}...`;
+        
+        if (currentDay >= days) {
+            clearInterval(progressInterval);
+        }
+    }, 3000);
+}
+
+/**
+ * Reset completo form
+ */
+function resetVDPForm() {
+    document.getElementById('vdp-form-step1').reset();
+    document.getElementById('vdp-form-step2').style.display = 'none';
+    document.getElementById('vdp-form-step3').style.display = 'none';
+    document.getElementById('vdp-colorAssignment').innerHTML = '';
+    document.getElementById('vdp-message').innerHTML = '';
+    currentEvents = [];
+}      
+// FINE NUOVA SEZIONE PLAN
+
+        // Populate ALL structure dropdowns at once on page load
+        // This runs immediately since structuresData is already available
+        (function populateAllStructureDropdowns() {
+            console.log('Populating all structure dropdowns...');
+
+            // Define all the select IDs that need to be populated
+            const selectPairs = [
+                { quartiere: 'quartiereSE', congress: 'congressSE' },  // Special Event
+                { quartiere: 'quartiereSDE', congress: 'congressSDE' },  // Special Daily Event
+                { quartiere: 'quartiereVC', congress: 'congressVC' },  // View Calendar
+                { quartiere: 'quartiereVDC', congress: 'congressVDC' },  // View Daily Calendar
+                { quartiere: 'quartiereVL', congress: 'congressVL' },  // View List Calendar
+                { quartiere: 'quartiereVDP', congress: 'congressVDP' } // View Daily Plan
+            ];
+
+            // Populate each pair of selects
+            selectPairs.forEach(pair => {
+                const quartiereEl = document.getElementById(pair.quartiere);
+                const congressEl = document.getElementById(pair.congress);
+
+                if (!quartiereEl || !congressEl) {
+                    console.warn(`Selects not found: ${pair.quartiere} or ${pair.congress}`);
+                    return;
+                }
+
+                // Clear existing options (if any)
+                quartiereEl.innerHTML = '';
+                congressEl.innerHTML = '';
+
+                // Populate quartiere (type 1) and congress (type 2)
+                structuresData.forEach(structure => {
+                    const option = document.createElement("option");
+                    option.value = structure[0];
+                    option.text = structure[1];
+
+                    if (structure[2] == 1) {
+                        quartiereEl.appendChild(option.cloneNode(true));
+                    } else if (structure[2] == 2) {
+                        congressEl.appendChild(option);
+                    }
+                });
+
+                console.log(`Populated ${pair.quartiere}: ${quartiereEl.options.length} options`);
+                console.log(`Populated ${pair.congress}: ${congressEl.options.length} options`);
+            });
+
+            console.log('✅ All structure dropdowns populated successfully');
+        })();
+    </script>
+
+</body>
+
+</html>

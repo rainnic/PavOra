@@ -96,9 +96,25 @@ function showFreeStruct(first, last, selectedStruct) {
     var structSpecial = selectedStruct || '';
     structures.push(structSpecial);
 
-
+    /*
     SpreadsheetApp.getUi()
       .showSidebar(doGet(structures, '1B_addEventPageFinish', translate('addEventPage.addPageTitle')));
+    */
+    var htmlOutput = doGet(structures, '1B_addEventPageFinish', translate('addEventPage.addPageTitle'));
+
+    // 2. Imposto le dimensioni desiderate per il dialogo.
+    // I valori 800 e 600 sono presi dal tuo esempio.
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo dal risultato di doGet (che è il terzo parametro)
+    // e lo uso come titolo della finestra di dialogo modale.
+    var dialogTitle = translate('addEventPage.addPageTitle');
+
+    // 4. Mostro il dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle); //showModelessDialog oppure showModalDialog
+
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
   }
@@ -238,12 +254,15 @@ function createEvents(first, last, array, what) {
       var eventID = (parseEventDetails(matrix[0][3]).id != '') ? parseEventDetails(matrix[0][3]).id + ' |-> ' + parseEventString(matrix[0][0]).nome : parseEventString(matrix[0][0]).nome;
       if (typeof what !== 'undefined') {
         if (what == 'hall') {
-          manageSmallRoom();
+          //manageSmallRoom();
           createDailyScheduleFromCalendar(first, 30, '');
           addLogRevision(oggi, translate('addEvent.logNewOne'), eventID, utenteEmail, matrix);
+return {
+  success: true
+};          
         }
       } else {
-        specialEvent();
+        //specialEvent();
         if (findKey('E', matrix, 5) >= 0) {
           const prefs = getUserBrowserSettings();
           showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
@@ -252,12 +271,23 @@ function createEvents(first, last, array, what) {
           showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
         }
         addLogRevision(oggi, translate('addEvent.logNew'), eventID, utenteEmail, matrix);
+return {
+  success: true
+};        
       }
     } else {
       SpreadsheetApp.getUi().alert(translate('modifyEvent.waitSomeTime'));
+  return {
+    success: false,
+    reason: 'WAIT'
+  };      
     }
 
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+  return {
+    success: false,
+    reason: 'error'
+  };    
   }
 }

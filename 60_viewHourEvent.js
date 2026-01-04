@@ -194,8 +194,9 @@ function createDailyScheduleFromCalendar(giorno, minuti, keyword, struttureScelt
 // --------------------------------------------
 function showFreeHall(first, last) {
   try {
-    createUserSheet();
-    ClearAll();
+    //createUserSheet();
+    //ClearAll();
+    resetFoglioConNuovo();
     //updateTimeUser(); // lo metto alla fine
     var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     //Logger.log('first è ' + typeof (first));
@@ -269,8 +270,25 @@ function showFreeHall(first, last) {
     } else {
     }
     updateTimeUser();
+    /*
     SpreadsheetApp.getUi()
       .showSidebar(doGet(structures, '6C2_addEditMSRPage', translate('menu.modifyEvent')));
+      */
+        // chiamata alla dialog
+    var htmlOutput = doGet(structures, '6C2_addEditMSRPage', translate('menu.modifyEvent'));
+
+    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
+    var dialogTitle = translate('menu.modifyEvent');
+
+    // 4. Mostro la finestra di dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
+    // fine chiamata alla dialog
+
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
   }
@@ -296,12 +314,12 @@ function showFreeHallEdit(first) {
           if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
             loc2array = eventi[i][10]; // .split(",");
             for (let j = 0; j < loc2array.length; j += 1) {
-              usedLocations.push(loc2array[j]);
+              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
               if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
-                var relationship = allStructures[findKey(loc2array[j], allStructures, 0)][10].split(","); // strutture con un grado di parentela da string a array
+                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
               }
               for (let k = 0; k < relationship.length; k += 1) {
-                usedLocations.push(relationship[k]);
+                usedLocations.push(String(relationship[k]));
               }
 
             }
@@ -341,9 +359,25 @@ function showFreeHallEdit(first) {
 
     updateTimeUser();
     // Temporaneamente commentato
+    /*
     SpreadsheetApp.getUi()
       .showSidebar(doGet(structures, '6D1_editAskMSRPage', translate('modifyEvent.editDelEvent')));
     //ClearAll();
+    */
+    // chiamata alla dialog
+    var htmlOutput = doGet(structures, '6D1_editAskMSRPage', translate('modifyEvent.editDelEvent'));
+
+    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
+    var dialogTitle = translate('modifyEvent.editDelEvent');
+
+    // 4. Mostro la finestra di dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
+    // fine chiamata alla dialog    
 
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
@@ -403,12 +437,12 @@ function showFreeStructHallModifyEvent(first, last, array, eventNameId, location
           if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
             loc2array = eventi[i][10]; // .split(",");
             for (let j = 0; j < loc2array.length; j += 1) {
-              usedLocations.push(loc2array[j]);
+              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
               if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
-                var relationship = strutture()[findKey(loc2array[j], strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
+                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
               }
               for (let k = 0; k < relationship.length; k += 1) {
-                usedLocations.push(relationship[k]);
+                usedLocations.push(String(relationship[k]));
               }
 
             }
@@ -440,7 +474,7 @@ function showFreeStructHallModifyEvent(first, last, array, eventNameId, location
     structures.unshift(refOp());
     structures.unshift(typeEv());
 
-    createDailyScheduleFromCalendar(first, 60, '');
+    //createDailyScheduleFromCalendar(first, 60, '');
     if (eventi.length != 0) {
       sh.getRange(2, 1).setValue(translate('modifyEvent.usedStruct')).setFontSize(12);
       sh.getRange(2, 1).setNote(usedUnique.toString()).setNumberFormat("@").setFontSize(10).setWrap(true);
@@ -449,8 +483,24 @@ function showFreeStructHallModifyEvent(first, last, array, eventNameId, location
     }
 
     updateTimeUser();
+    /*
     SpreadsheetApp.getUi()
       .showSidebar(doGet(structures, '6D2_editAddMSRPage', translate('sidebar.editEvent')));
+    */
+        // chiamata alla dialog
+    var htmlOutput = doGet(structures, '6D2_editAddMSRPage', translate('sidebar.editEvent'));
+
+    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
+    var dialogTitle = translate('sidebar.editEvent');
+
+    // 4. Mostro la finestra di dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
+    // fine chiamata alla dialog
 
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');

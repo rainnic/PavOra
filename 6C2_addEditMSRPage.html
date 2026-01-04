@@ -194,11 +194,22 @@
             //alert("Operazione completata!");
           }, 20000);
 
-          google.script.run.createEvents(first, last, outputEvents, 'hall');
+          //google.script.run.createEvents(first, last, outputEvents, 'hall');
+          google.script.run
+             .withSuccessHandler(onSalvataggioCompletato)
+             .createEvents(first, last, outputEvents, 'hall');
         }
       }
     }
   }
+
+function onSalvataggioCompletato(risultato) {
+  if (!risultato || risultato.success !== true) {
+    // sidebar resta aperta
+    return;
+  }
+  google.script.host.close();
+}
 
   function cancella() {
     document.getElementById("myForm").reset();
@@ -206,14 +217,15 @@
     document.getElementById('finishDate').value = finishDate;
   }
   function back() {
-    google.script.run.manageSmallRoom()
+    //google.script.run.manageSmallRoom()
+    google.script.host.close();
   }    
 </script>
 
 <!-- <body> -->
 
 <body onload="createTable()" class="specialDaily-page">
-  <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+  <!-- <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?> -->
   <h4 class="align">
     <?= translate('addEventPage.timePeriodPre') ?>
   </h4>
@@ -586,7 +598,8 @@
     if (timeLeft < 0) {
       // Reindirizza alla pagina finale se il tempo è scaduto
       // window.location.href = "pagina_finale.html";
-      google.script.run.completeMenu();
+      //google.script.run.completeMenu();
+      google.script.host.close();
     }
   }
 

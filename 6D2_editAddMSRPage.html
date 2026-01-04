@@ -222,11 +222,22 @@
           }, 20000);
 
           //google.script.run.createEvents(first, last, outputEvents);
-          google.script.run.deleteThenModifyEvents(eventID, first, last, outputEvents, 'hall');
+          //google.script.run.deleteThenModifyEvents(eventID, first, last, outputEvents, 'hall');
+          google.script.run
+             .withSuccessHandler(onSalvataggioCompletato)
+             .deleteThenModifyEvents(eventID, first, last, outputEvents, 'hall');
         }
       }
     }
   }
+
+function onSalvataggioCompletato(risultato) {
+  if (!risultato || risultato.success !== true) {
+    // sidebar resta aperta
+    return;
+  }
+  google.script.host.close();
+}
 
   function cancella() {
     varDef = document.getElementById("idEvent").value;
@@ -251,17 +262,22 @@
       //alert("Operazione completata!");
     }, 20000);
 
-    google.script.run.deleteEvents(eventID, first, last, 'hall');
+    //google.script.run.deleteEvents(eventID, first, last, 'hall');
+    google.script.run
+        .withSuccessHandler(onSalvataggioCompletato)
+        .deleteEvents(eventID, first, last, 'hall');
+
   }
   function back() {
-    google.script.run.manageSmallRoom()
+    //google.script.run.manageSmallRoom()
+    google.script.host.close();
   }    
 </script>
 
 <!-- <body> -->
 
 <body onload="createTable()" class="specialDaily-page">
-  <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?>
+  <!-- <?!= HtmlService.createHtmlOutputFromFile('W_header').getContent(); ?> -->
   <!-- <h3 class="align ">Visualizza gli eventi a calendario</h3> -->
   <h4 class="align">
     <?= translate('modifyPageAsk.dateChangeEvent') ?>
@@ -661,7 +677,8 @@
     if (timeLeft < 0) {
       // Reindirizza alla pagina finale se il tempo è scaduto
       // window.location.href = "pagina_finale.html";
-      google.script.run.completeMenu();
+      //google.script.run.completeMenu();
+      google.script.host.close();
     }
   }
 

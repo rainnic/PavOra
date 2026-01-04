@@ -469,7 +469,7 @@ function viewListEvents(fromDate, toDate, cosa, multiBuilding, keyword, come) {
   var sottotitolo = translate('viewList.eventsFrom') + primo + translate('viewList.eventsTo') + ultimo + translate('viewList.updateAt') + adesso + ')';
   if (come == 'agg') {
     //var header = [["Inizio", "Evento", "Codice", "Strutture", "∑mq", "∑pax ", "Note", "Durata (" + myarr + ")", "Referente", "Operation", "Organizzatore", "Allestitore", "Catering", "Tipo evento", "Opzionato?", "Pubblico?", "VVF", "CRI", "Num. AE", "Scadenza Opz."]];
-    var header = [translate('viewList.headerAggr', { myarr: myarr.replace(/,/g, '|')  }).split(',')];
+    var header = [translate('viewList.headerAggr', { myarr: myarr.replace(/,/g, '|') }).split(',')];
     var range = sheet.getRange(2, 1, 1, 20);
   } else if (come == 'day') {
     //var header = [["Inizio", "Evento ", "Tipo", "Inizio", "Fine", "Strutture", "∑mq", "∑pax ", "Note", "Tipo evento", "Opzionato?", "Pubblico", "VVF", "CRI", "Num. AE"]];
@@ -584,7 +584,7 @@ function viewListEvents(fromDate, toDate, cosa, multiBuilding, keyword, come) {
     sheet.setColumnWidth(17, column4Width);  // VVF
     sheet.setColumnWidth(18, column4Width);  // CRI        
     sheet.getRange(1, sheet.getLastColumn()).setValue(sottotitolo).setHorizontalAlignment("right").setFontSize(10);
-    sheet.getRange(1, 1).setValue(sheetTitle).setNumberFormat('0').setHorizontalAlignment("left").setFontSize(14);
+    sheet.getRange(1, 1).setValue(sheetTitle).setNumberFormat('0').setHorizontalAlignment("left").setFontSize(16);
     var numRows = (sheet.getLastRow() > 3) ? (nomeEventi.length) : 6;
   } else if (come == 'day') {
     // Durata giorni
@@ -602,7 +602,7 @@ function viewListEvents(fromDate, toDate, cosa, multiBuilding, keyword, come) {
     sheet.setColumnWidth(7, column7Width);
     sheet.setColumnWidth(15, column7Width);  // AE
     sheet.getRange(1, sheet.getLastColumn()).setValue(sottotitolo).setHorizontalAlignment("right").setFontSize(10);
-    sheet.getRange(1, 1).setValue(sheetTitle).setNumberFormat('0').setHorizontalAlignment("left").setFontSize(14);
+    sheet.getRange(1, 1).setValue(sheetTitle).setNumberFormat('0').setHorizontalAlignment("left").setFontSize(16);
     var numRows = (sheet.getLastRow() > 3) ? (listaEventiStart.length) : 6;
   }
 
@@ -800,163 +800,331 @@ function trygetCellListaNote() {
   getCellListNote(what);
 }
 
-// what = "updateDetailsEvent" | updateDetailsEvent | deleteEvent;
+/**
+ * Gestisce le operazioni sugli eventi del calendario dalla cella attiva del foglio
+ * @param {string} what - Tipo di operazione: "updateDetailsEvent", "updateSpecificEvent", "deleteEvent"
+ * @param {string} first - Data iniziale (opzionale, calcolata automaticamente)
+ * @param {string} last - Data finale (opzionale, calcolata automaticamente)
+ * @returns {string} Nome dell'evento o messaggio di errore
+ */
 function getCellListNote(what, first, last) {
-  //try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var ui = SpreadsheetApp.getUi();
-    updateTimeUser();
-    var cell = sh.getActiveCell(); // from the google sheet
-    var noteComplete = cell.getNote();
-    var name = cell.getValue();
-    var lastColumn = sh.getLastColumn();
-    var activeRow = sh.getActiveRange().getRow();
-
-    // Ottieni la riga attualmente selezionata
-    //const selectedRow = range.getRow();
-
-    // Ottieni la nota dalla seconda colonna (colonna B)
-    const nameNote = sh.getRange(activeRow, 2).getNote();
-
-    // Ottieni il valore dalla seconda colonna (colonna B)
-    const nameValue = sh.getRange(activeRow, 2).getValue();
-
-    // Salva la nota in una variabile
-    let noteContent = noteComplete || "La cella non ha una nota.";
-
-    // Mostra il contenuto della nota nei log
-    //Logger.log(noteContent);
-
-    // Ottiene l'intervallo della riga attiva
-    var range = sh.getRange(activeRow, 1, 1, lastColumn);
-
-    // Ottiene i valori della riga e li assegna alla matrice 'values'
-    var valuesRow = range.getValues();
-    if (nameNote.length != 0) {
-      var note = ((extractRegex(regexId, nameNote) != 0) ? extractRegex(regexId, nameNote) : parseEventString(extractRegex(regexName, nameNote)).nome);
-    }
-    if ((note) && (lastColumn > 10)) {
-      var today = new Date();
-      var startDate = new Date(today.getFullYear() - 2, 0, 1); // 1 gennaio di 1 anno fa
-
-      // Inizializza una data finale molto futura
-      var endDate = new Date(today.getFullYear() + 6, 0, 1); // 1 gennaio tra 6 anni
-      var first = formatDateMaster(startDate).dataXweb;
-      var last = formatDateMaster(endDate).dataXweb;
-      var startList = logMatchingEvents(myCalID()[0][0], note, first, last, what);
-      var finalList = [];
-      for (let j = 0; j < startList.length; j++) {
-        var idEvent = (startList[j][13].length == 0) ? randomID(8) : startList[j][13];
-        var all = trovaChiaveID(valuesRow[0][11], allestitore());
-        var referenteCom = trovaChiaveID(valuesRow[0][8], refCom());
-        var referenteOp = trovaChiaveID(valuesRow[0][9], refOp());
-        var typeEvento = trovaChiaveID(valuesRow[0][13], typeEv());
-        var feed = trovaChiaveID(valuesRow[0][12], catering());
-        var all = trovaChiaveID(valuesRow[0][11], allestitore());
-        // Il nome al momento non si può cancellare da qui!
-        finalList.push([valuesRow[0][1], valuesRow[0][14], valuesRow[0][15], startList[j][3], startList[j][4], startList[j][5], startList[j][6], startList[j][7], all, valuesRow[0][16], valuesRow[0][17], referenteCom, valuesRow[0][6], idEvent, startList[j][14], startList[j][15], startList[j][16], startList[j][17], startList[j][18], startList[j][19], startList[j][20], referenteOp, valuesRow[0][10], typeEvento, startList[j][24], feed, valuesRow[0][2], (valuesRow[0][19] == '' ? '' : convertDateInputHtml(valuesRow[0][19]))]);
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const ui = SpreadsheetApp.getUi();
+  
+  updateTimeUser();
+  
+  // Validazione colonne minime
+  const lastColumn = sh.getLastColumn();
+  if (lastColumn <= 10) {
+    ui.alert(translate('viewList.alertEdit'));
+    return translate('modifyEvent.emptyCell');
+  }
+  
+  // Recupero informazioni cella attiva
+  const activeRow = sh.getActiveRange().getRow();
+  const cell = sh.getActiveCell();
+  const noteComplete = cell.getNote();
+  const name = cell.getValue();
+  
+  // Recupero nota e valore dalla colonna B
+  const nameNote = sh.getRange(activeRow, 2).getNote();
+  const nameValue = sh.getRange(activeRow, 2).getValue();
+  
+  // Estrazione nome evento
+  let note = '';
+  if (nameNote.length !== 0) {
+    const extractedId = extractRegex(regexId, nameNote);
+    note = extractedId !== 0 
+      ? extractedId 
+      : parseEventString(extractRegex(regexName, nameNote)).nome;
+  }
+  
+  // Recupero valori riga
+  const range = sh.getRange(activeRow, 1, 1, lastColumn);
+  const valuesRow = range.getValues();
+  
+  // Calcolo date di ricerca (se non fornite)
+  if (!note) {
+    ui.alert(translate('viewList.alertEdit'));
+    return translate('modifyEvent.emptyCell');
+  }
+  
+  const today = new Date();
+  const startDate = new Date(today.getFullYear() - 2, 0, 1);
+  const endDate = new Date(today.getFullYear() + 6, 0, 1);
+  first = formatDateMaster(startDate).dataXweb;
+  last = formatDateMaster(endDate).dataXweb;
+  
+  // Recupero eventi
+  const startList = logMatchingEvents(myCalID()[0][0], note, first, last, what);
+  
+  // Costruzione finalList
+  const finalList = buildFinalList(startList, valuesRow);
+  
+  // Gestione operazioni
+  switch (what) {
+    case "updateDetailsEvent":
+      if (lastColumn > 16) {
+        handleUpdateDetailsEvent(sh, ui, note, first, last, finalList, startList, activeRow);
       }
-    }
-    if (lastColumn > 16) {
-      var titoli = translate('viewList.titleChanges').split(',');
-      if (what === "updateDetailsEvent") {
-        first = convertDateInputHtml(finalList[0][18]);
-        last = convertDateInputHtml(finalList[finalList.length - 1][19]);
-        var eventi = findEventsByKeyword(myCalID()[0][0], note, first, last);
-        var matrice = [];
-        var testo = '';
-        for (let i = 0; i < eventi.length; i += 1) {
-          testo = testo + eventi[i].getTitle() + '\t' + convertDate(eventi[i].getStartTime()) + '\n';
-          matrice.push([eventi[i].getTitle(), eventi[i].getStartTime(), eventi[i].getEndTime(), eventi[i].getDescription(), eventi[i].getLocation()]);
-        }
-        var calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
-        var response = ui.alert(translate('viewList.updateOf') + finalList[0][0], confrontaVettoriConTitoli(titoli, startList[0], finalList[0]) + translate('viewList.okTo'), ui.ButtonSet.YES_NO);
-        //var response = ui.alert('Conferma Cancellazione', testo, ui.ButtonSet.YES_NO);
-
-        // Gestisci la risposta dell'utente
-        if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == true)) {
-          // Chiedi prima di modificare gli eventi:
-          var eventId = (parseEventDetails(matrice[0][3]).id != '') ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome : parseEventString(matrice[0][0]).nome;
-          var testo = translate('modifyEvent.warEventDel', { eventId: eventId });
-          var matriceDel = [];
-          for (let i = 0; i < eventi.length; i += 1) {
-            testo = testo + eventi[i].getTitle() + '\t | \t' + convertDate(eventi[i].getStartTime()) + '\n';
-            matriceDel.push([eventi[i].getTitle(), eventi[i].getStartTime(), eventi[i].getEndTime(), eventi[i].getDescription(), eventi[i].getLocation()]);
-          }
-          var response = ui.alert(translate('modifyEvent.confirmYN'), testo, ui.ButtonSet.YES_NO);
-          // Gestisci la risposta dell'utente
-          if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == true)) {
-            // Itera su ciascun ID evento e prova a cancellarlo
-            if (eventi.length > 0) {
-              for (let i = 0; i < eventi.length; i += 1) {
-                var event = calendar.getEventById(eventi[i].getId());
-                if (event) {
-                  event.deleteEvent();
-                } else {
-                }
-              }
-            }
-            oggi = new Date();
-            utenteEmail = Session.getEffectiveUser().getEmail();
-            if (matrice.length != 0) {
-              var eventID = (parseEventDetails(matrice[0][3]).id != '') ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome : parseEventString(matrice[0][0]).nome;
-            } else {
-              var eventID = 'ERRORE';
-            }
-            addLogRevision(oggi, translate('modifyEvent.logCancMod'), eventID, utenteEmail, matrice);
-            var listFinalEvents = [];
-            for (let i = 0; i < finalList.length; i += 1) {
-
-              var title = (finalList[i][1] == 'SI' ? 'Opz. ' + finalList[i][0] : finalList[i][0]) + ' ' + finalList[i][14];
-              var description = finalList[i][12] + ' ' + 'all=' + finalList[i][8] + ' feed=' + finalList[i][25] + ' code=' + finalList[i][26] + ' id=' + finalList[i][13] + ' typeEv=' + finalList[i][23] + ' org=' + finalList[i][22] + ' refCom=' + finalList[i][11] + ' refOp=' + finalList[i][21] + ' open=' + finalList[i][2] + ' ' + ((finalList[i][14] == 'E') ? ' vvf=' + finalList[i][9] + ' cri=' + finalList[i][10] + ' color=' + finalList[i][24] : '') + (finalList[i][27] == '' ? '' : ' opzExp=' + convertDateInputHtml(finalList[i][27]));
-              locationArray = finalList[i][3].concat(finalList[i][4], finalList[i][5], finalList[i][6], finalList[i][7]);
-              var location = locationArray.join('| ');
-              listFinalEvents.push([title, finalList[i][18], finalList[i][19], description, location, finalList[i][14], finalList[i][21], finalList[i][13]]);
-            }
-
-            var firstEventDate = convertDateInputHtml(sh.getRange(3, 1).getValue());
-            var lastEventDate = convertDateInputHtml(sh.getRange(sh.getLastRow(), 1).getValue());
-            modifyEvents(first, last, listFinalEvents.toString(), what, activeRow);
-
-            // Ottieni il numero di colonne del foglio
-            var numColumns = sh.getLastColumn();
-
-            // Crea un array con il testo "modificato" per ogni cella nella riga
-            var rowValues = Array(numColumns).fill(translate('modifyEvent.logEditMod'));
-
-            // Scrivi il testo "modificato" su tutte le celle della riga
-            sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
-            return
-
-          } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
-            ui.alert(translate('modifyEvent.waitSomeTime'));
-            return
-          }
-        } else {
-          ui.alert(translate('modifyEvent.opNOMessage'));
-          return
-       }    
-      } else if (what === 'deleteEvent') {
-        first = convertDateInputHtml(finalList[0][18]);
-        last = convertDateInputHtml(finalList[finalList.length - 1][19]);
-        deleteEvents(note, first, last, what, activeRow);
-        return
+      break;
+      
+    case "deleteEvent":
+      first = convertDateInputHtml(finalList[0][18]);
+      last = convertDateInputHtml(finalList[finalList.length - 1][19]);
+      deleteEvents(note, first, last, what, activeRow);
+      break;
+      
+    case "updateSpecificEvent":
+      if (lastColumn > 12 && note !== '') {
+        handleUpdateSpecificEvent(ui, note, finalList);
+      } else if (note === '') {
+        ui.alert(translate('viewList.alertOldEdit', { name: note }));
       }
-    } 
-    if (((lastColumn > 12)) && (what === 'updateSpecificEvent')) {
-      if (note != '') {
-        var response = ui.alert(translate('viewList.okEditSpecific'), translate('viewList.yesEditSpecific', { name: note }), ui.ButtonSet.YES_NO);
-        if (response == ui.Button.YES) {
-          first = convertDateInputHtml(finalList[0][18]);
-          last = convertDateInputHtml(finalList[finalList.length - 1][19]);
-          var listaFinale = logMatchingEvents(myCalID()[0][0], note, first, last);
-          showFreeStructModifyEvent(first, last, listaFinale, note);
-          return
-        }
-      } else {ui.alert(translate('viewList.alertOldEdit', { name: note }));}
-    } else {
+      break;
+      
+    default:
       ui.alert(translate('viewList.alertEdit'));
+  }
+  
+  return note || translate('modifyEvent.emptyCell');
+}
+
+/**
+ * Costruisce la lista finale degli eventi con tutti i dati necessari
+ */
+function buildFinalList(startList, valuesRow) {
+  const finalList = [];
+  
+  for (let j = 0; j < startList.length; j++) {
+    const idEvent = startList[j][13].length === 0 ? randomID(8) : startList[j][13];
+    
+    // Lookup degli ID dalle matrici di riferimento
+    const all = trovaChiaveID(valuesRow[0][11], allestitore());
+    const referenteCom = trovaChiaveID(valuesRow[0][8], refCom());
+    const referenteOp = trovaChiaveID(valuesRow[0][9], refOp());
+    const typeEvento = trovaChiaveID(valuesRow[0][13], typeEv());
+    const feed = trovaChiaveID(valuesRow[0][12], catering());
+    
+    const opzExp = valuesRow[0][19] === '' ? '' : convertDateInputHtml(valuesRow[0][19]);
+    
+    finalList.push([
+      valuesRow[0][1],   // nome
+      valuesRow[0][14],  // opzionato
+      valuesRow[0][15],  // pubblico
+      startList[j][3],   // quartiere
+      startList[j][4],   // congress
+      startList[j][5],   // ingressi
+      startList[j][6],   // aree
+      startList[j][7],   // parcheggi
+      all,               // allestitore
+      valuesRow[0][16],  // vvf
+      valuesRow[0][17],  // cri
+      referenteCom,      // referente commerciale
+      valuesRow[0][6],   // note
+      idEvent,           // id evento
+      startList[j][14],  // type
+      startList[j][15],  // data
+      startList[j][16],  // startTime
+      startList[j][17],  // endTime
+      startList[j][18],  // startTimeUTC
+      startList[j][19],  // endTimeUTC
+      startList[j][20],  // location
+      referenteOp,       // referente operativo
+      valuesRow[0][10],  // organizzatore
+      typeEvento,        // tipo evento
+      startList[j][24],  // color
+      feed,              // catering
+      valuesRow[0][2],   // codice amministrazione
+      opzExp             // data scadenza opzione
+    ]);
+  }
+  
+  return finalList;
+}
+
+/**
+ * Gestisce l'aggiornamento completo dei dettagli dell'evento
+ */
+function handleUpdateDetailsEvent(sh, ui, note, first, last, finalList, startList, activeRow) {
+  const titoli = translate('viewList.titleChanges').split(',');
+  
+  first = convertDateInputHtml(finalList[0][18]);
+  last = convertDateInputHtml(finalList[finalList.length - 1][19]);
+  
+  const eventi = findEventsByKeyword(myCalID()[0][0], note, first, last);
+  
+  // Costruzione matrice eventi e testo per conferma
+  const matrice = [];
+  let testo = '';
+  for (let i = 0; i < eventi.length; i++) {
+    testo += `${eventi[i].getTitle()}\t${convertDate(eventi[i].getStartTime())}\n`;
+    matrice.push([
+      eventi[i].getTitle(),
+      eventi[i].getStartTime(),
+      eventi[i].getEndTime(),
+      eventi[i].getDescription(),
+      eventi[i].getLocation()
+    ]);
+  }
+  
+  // Prima conferma: mostra differenze
+  const confronto = confrontaVettoriConTitoli(titoli, startList[0], finalList[0]);
+  const response1 = ui.alert(
+    translate('viewList.updateOf') + finalList[0][0],
+    confronto + translate('viewList.okTo'),
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response1 !== ui.Button.YES) {
+    ui.alert(translate('modifyEvent.opNOMessage'));
+    return;
+  }
+  
+  if (!checkUserWritePermission(myCalID()[0][0])) {
+    ui.alert(translate('modifyEvent.waitSomeTime'));
+    return;
+  }
+  
+  // Seconda conferma: cancellazione eventi
+  const eventId = buildEventId(matrice[0]);
+  let testoDel = translate('modifyEvent.warEventDel', { eventId: eventId });
+  
+  for (let i = 0; i < eventi.length; i++) {
+    testoDel += `${eventi[i].getTitle()}\t | \t${convertDate(eventi[i].getStartTime())}\n`;
+  }
+  
+  const response2 = ui.alert(
+    translate('modifyEvent.confirmYN'),
+    testoDel,
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response2 !== ui.Button.YES) {
+    ui.alert(translate('modifyEvent.opNOMessage'));
+    return;
+  }
+  
+  // Cancellazione eventi esistenti
+  const calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
+  deleteExistingEvents(calendar, eventi);
+  
+  // Log revisione
+  const oggi = new Date();
+  const utenteEmail = Session.getEffectiveUser().getEmail();
+  const eventID = matrice.length !== 0 ? buildEventId(matrice[0]) : 'ERRORE';
+  addLogRevision(oggi, translate('modifyEvent.logCancMod'), eventID, utenteEmail, matrice);
+  
+  // Creazione nuovi eventi
+  const listFinalEvents = buildEventsList(finalList);
+  modifyEvents(first, last, listFinalEvents.toString(), 'updateDetailsEvent', activeRow);
+  
+  // Aggiornamento foglio
+  markRowAsModified(sh, activeRow);
+}
+
+/**
+ * Gestisce l'aggiornamento specifico di un evento
+ */
+function handleUpdateSpecificEvent(ui, note, finalList) {
+  const response = ui.alert(
+    translate('viewList.okEditSpecific'),
+    translate('viewList.yesEditSpecific', { name: note }),
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response === ui.Button.YES) {
+    const first = convertDateInputHtml(finalList[0][18]);
+    const last = convertDateInputHtml(finalList[finalList.length - 1][19]);
+    const listaFinale = logMatchingEvents(myCalID()[0][0], note, first, last);
+    showFreeStructModifyEvent(first, last, listaFinale, note);
+  }
+}
+
+/**
+ * Cancella gli eventi esistenti dal calendario
+ */
+function deleteExistingEvents(calendar, eventi) {
+  for (let i = 0; i < eventi.length; i++) {
+    const event = calendar.getEventById(eventi[i].getId());
+    if (event) {
+      event.deleteEvent();
     }
-    return note || translate('modifyEvent.emptyCell')
+  }
+}
+
+/**
+ * Costruisce la lista degli eventi per la creazione/modifica
+ */
+function buildEventsList(finalList) {
+  const listFinalEvents = [];
+  
+  for (let i = 0; i < finalList.length; i++) {
+    const item = finalList[i];
+    
+    // Titolo evento
+    const title = (item[1] === 'SI' ? 'Opz. ' + item[0] : item[0]) + ' ' + item[14];
+    
+    // Descrizione evento
+    const descriptionParts = [
+      item[12],
+      `all=${item[8]}`,
+      `feed=${item[25]}`,
+      `code=${item[26]}`,
+      `id=${item[13]}`,
+      `typeEv=${item[23]}`,
+      `org=${item[22]}`,
+      `refCom=${item[11]}`,
+      `refOp=${item[21]}`,
+      `open=${item[2]}`
+    ];
+    
+    // Aggiungi dettagli evento se tipo E
+    if (item[14] === 'E') {
+      descriptionParts.push(`vvf=${item[9]}`, `cri=${item[10]}`, `color=${item[24]}`);
+    }
+    
+    // Aggiungi scadenza opzione se presente
+    if (item[27] !== '') {
+      descriptionParts.push(`opzExp=${item[27]}`);
+    }
+    
+    const description = descriptionParts.join(' ');
+    
+    // Location
+    const locationArray = [item[3], item[4], item[5], item[6], item[7]];
+    const location = locationArray.join('| ');
+    
+    listFinalEvents.push([
+      title,
+      item[18],  // startTimeUTC
+      item[19],  // endTimeUTC
+      description,
+      location,
+      item[14],  // type
+      item[21],  // refOp
+      item[13]   // idEvent
+    ]);
+  }
+  
+  return listFinalEvents;
+}
+
+/**
+ * Costruisce l'ID evento per il log
+ */
+function buildEventId(matriceItem) {
+  const details = parseEventDetails(matriceItem[3]);
+  const nome = parseEventString(matriceItem[0]).nome;
+  return details.id !== '' ? `${details.id} |-> ${nome}` : nome;
+}
+
+/**
+ * Marca la riga come modificata
+ */
+function markRowAsModified(sh, activeRow) {
+  const numColumns = sh.getLastColumn();
+  const rowValues = Array(numColumns).fill(translate('modifyEvent.logEditMod'));
+  sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
 }
 // FINE

@@ -2,7 +2,7 @@
 function testShowNewMonths() {
   //showMonths('2024-09-16', '2024-09-20', 'SGP,SGG,SGB,S01,S02,S03,S04,S05,S11,SMP,SM1,SM2,GALL,foyerSG,foyerSMU,foyerSM,foyerMe1,foyerMe2,bistro,loggia,lobbyQ4,ufficiQ8,catering,foyerBar,ristorante,lbar', '', '1');
   var start = Date.now();
-  showMonths('2025-01-01', '2025-12-31', '', '', '');
+  showMonths('2026-01-01', '2026-01-31', '', '', '');
   var end = Date.now();
   Logger.log("Tempo di esecuzione funzione: " + (end - start) / 1000 + " secondi");
 }
@@ -10,6 +10,19 @@ function testShowNewMonths() {
 // --------------------------------------------------------------------------------------
 // SPECIAL DAILY EVENT
 // --------------------------------------------------------------------------------------
+/*
+function wrapperSpecialEvent(first, last, keyword, selectedStruct) {
+  try {
+    // Esegui tutto in sequenza, non in parallelo
+    updateTimeUser();
+    salvaDatiInUserProperties(first, last, keyword, selectedStruct);
+    showMonths(first, last, selectedStruct, keyword, 'dateOK');
+  } catch (error) {
+    throw new Error(translate('alert.errorMessage') + ' (' + error.message + ')');
+  }
+}
+*/
+
 function showFreeDailyHall(first, last, selectionData) {
   try {
     //createUserSheet();
@@ -68,7 +81,21 @@ function showFreeDailyHall(first, last, selectionData) {
 
     updateTimeUser();
 
-    SpreadsheetApp.getUi().showSidebar(doGet(structures, '6C2_addEditMSRPage', translate('menu.modifyEvent')));
+    //SpreadsheetApp.getUi().showSidebar(doGet(structures, '6C2_addEditMSRPage', translate('menu.modifyEvent')));
+    // chiamata alla dialog
+    var htmlOutput = doGet(structures, '6C2_addEditMSRPage', translate('menu.modifyEvent'));
+
+    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
+    var dialogTitle = translate('menu.modifyEvent');
+
+    // 4. Mostro la finestra di dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
+    // fine chiamata alla dialog    
 
   } catch (error) {
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
@@ -465,8 +492,10 @@ function getCellSpecialNote(what, first, last) {
 function showMonths(first, last, structures, keyword, period) {
   try {
     //createUserSheet();
-    resetFoglioConNuovo();
-    const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    //updateTimeUser();
+    const sh = resetFoglioConNuovo();
+    SpreadsheetApp.flush();
+    //const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
     // Se il periodo non è definito, regola automaticamente il range
     if (period === undefined) {
@@ -486,8 +515,9 @@ function showMonths(first, last, structures, keyword, period) {
     const eventi = events2Array(convertDateBar(firstDate[0]), convertDateBar(lastDate[2]), categories()[0][0], keyword);
 
     var matrici = generaMatriceEventiConColori(eventi, formatDateMaster(firstDate[0]).dataXweb, formatDateMaster(lastDate[2]).dataXweb, structures);
+    //const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     popolaFoglioSheet(matrici.matriceOutput, matrici.matriceNoteOutput, matrici.matriceColorOutput, matrici.matriceDomenicheOutput);
-    checkToday();
+    checkToday(sh);
 
     // Nasconde le colonne fuori dal range
     const lc = sh.getLastColumn();
@@ -497,6 +527,8 @@ function showMonths(first, last, structures, keyword, period) {
 
     if (rangeColStart > 0) sh.hideColumns(2, rangeColStart);
     if (rangeColFinish > 0) sh.hideColumns(colFinishStart, rangeColFinish);
+    //updateTimeUser();
+  
   } catch (error) {
     const errorMessage = translate('alert.errorMessage') + ' (' + error.message + ')';
     SpreadsheetApp.getUi().alert(errorMessage);
@@ -528,6 +560,7 @@ function resetFoglioConNuovo() {
   const today = new Date();
   foglioNuovo.getRange(1, 1).setValue(translate('specialEvent.newSheet') + '\n' + formatDateMaster(today).ora + ' ' + formatDateMaster(today).giorno);
   //protectSheets(); //Commented out due to permission errors encountered by the writer and reader user roles
+  return foglioNuovo;
 }
 
 function generaMatriceEventiConColori(eventi, intervalloInizio, intervalloFine, luoghi) {

@@ -65,104 +65,142 @@ function checkUserWritePermission(calendarId) {
 // in this case the user has the write access to the shared calendar
 //
 function userWriteReadCalendar() { // funzione in uso ed ufficiale!!!!
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  //Logger.log(user);
-  var timeInterval = minutesPermitted() * 60 * 1000; // 5 minuti bisogna modificarlo nella tabella variabili
-  if (users()[findKey(user, users(), 0)][1] === 'admin') {
-    //Logger.log('L\'utente ' + user + ' può modificare i permessi al calendario');
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var fogli = ss.getSheets(); // Ottieni tutti i fogli esistenti
-    var nomiFogli = fogli.map(function (foglio) { return foglio.getName(); }); // Ottieni i nomi dei fogli
-
-    // Verifica e crea il foglio "logs" se non esiste
-    if (!nomiFogli.includes(sheetsList()[0][0])) {
-      ss.insertSheet(sheetsList()[0][0]);
-      var newSheet = ss.getSheetByName(sheetsList()[0][0]);
-      var range = newSheet.getRange(1, 1, 1, 5);
-      var range1 = newSheet.getRange(2, 1, 1, 5);
-      //var header = [["Data", "AzioneID", "Evento", "Email Utente", "Dettagli"]];
-      var header = [translate('main.logCreation').split(',')];
-      var firstRow = [[".", ".", ".", ".", "."]];
-      // Stili per la tabella
-      var headerColor = "#999999"; // #EDD400 giallo per l'intestazione della tabella 002d62 blu sito
-      var textHeaderColor = "#000000";
-      range.setValues(header).setFontColor(textHeaderColor).setFontSize(12).setBackground(headerColor).setHorizontalAlignment("center");
-      range1.setValues(firstRow);
-      addFilterRegisterPage();
-      newSheet.deleteRow(newSheet.getLastRow());
-    }
-
-    // Verifica e crea il foglio "instructions" se non esiste
-    if (!nomiFogli.includes(sheetsList()[2][0])) {
-      ss.insertSheet(sheetsList()[2][0]);
-      var newSheet = ss.getSheetByName(sheetsList()[2][0]);
-      var countSheet = ss.getSheets().length;
-      ss.moveActiveSheet(1);
-      newSheet.getRange("G2").setValue(translate('main.instruction') + ' ➡️').setHorizontalAlignment('right').setFontSize(20);
-      insertFloatingImage(newSheet, driveIDFiles()[3][0], 2, 3, 667 * 0.75, 738 * 0.75);
-
-      // Rimuove colonne e righe extra
-      var maxColumns = 7;
-      var maxRows = 30;
-
-      // Rimuove colonne extra
-      var totalColumns = newSheet.getMaxColumns();
-      if (totalColumns > maxColumns) {
-        newSheet.deleteColumns(maxColumns + 1, totalColumns - maxColumns);
-      }
-
-      // Rimuove righe extra
-      var totalRows = newSheet.getMaxRows();
-      if (totalRows > maxRows) {
-        newSheet.deleteRows(maxRows + 1, totalRows - maxRows);
-      }
-
-      // Nasconde la griglia
-      newSheet.setHiddenGridlines(true);
-    }
-    eliminaFogliNonPresentiNelVettore();
-    /* NEW CODE FOR OPTIMIZE CALL TO SHARECALENDAR */
-sh = ss.getSheetByName(sheetsList()[1][0]);
-var lr = sh.getLastRow();
-var currentTime = new Date();
-
-for (let i = 4; i <= lr; i += 1) {
-  var userEmail = sh.getRange(i, 1).getValue();
-  var lastOnline = new Date(sh.getRange(i, 2).getValue()).getTime();
-  var activation = sh.getRange(i, 3).getValue(); // Valore attuale di Attivazione
-  var newActivation = (currentTime.getTime() <= (lastOnline + timeInterval)) ? 1 : 0;
-  var newRole = newActivation === 1 ? "writer" : "reader"; // Scrittura solo se attivo
-
-  // Recupera il ruolo attuale dell'utente per evitare modifiche inutili
   try {
-    if (aliasEmail()) {userEmail = getRealEmail(userEmail)}
-    var currentAcl = Calendar.Acl.get(myCalID()[0][0], "user:" + userEmail);
-    var currentRole = currentAcl.role;
+    var user = getAliasEmail(Session.getEffectiveUser().getEmail());
+    //Logger.log(user);
+    var timeInterval = minutesPermitted() * 60 * 1000; // 5 minuti bisogna modificarlo nella tabella variabili
+    if (users()[findKey(user, users(), 0)][1] === 'admin') {
+      //Logger.log('L\'utente ' + user + ' può modificare i permessi al calendario');
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var fogli = ss.getSheets(); // Ottieni tutti i fogli esistenti
+      var nomiFogli = fogli.map(function (foglio) { return foglio.getName(); }); // Ottieni i nomi dei fogli
+
+      // Verifica e crea il foglio "logs" se non esiste
+      if (!nomiFogli.includes(sheetsList()[0][0])) {
+        ss.insertSheet(sheetsList()[0][0]);
+        var newSheet = ss.getSheetByName(sheetsList()[0][0]);
+        var range = newSheet.getRange(1, 1, 1, 5);
+        var range1 = newSheet.getRange(2, 1, 1, 5);
+        //var header = [["Data", "AzioneID", "Evento", "Email Utente", "Dettagli"]];
+        var header = [translate('main.logCreation').split(',')];
+        var firstRow = [[".", ".", ".", ".", "."]];
+        // Stili per la tabella
+        var headerColor = "#999999"; // #EDD400 giallo per l'intestazione della tabella 002d62 blu sito
+        var textHeaderColor = "#000000";
+        range.setValues(header).setFontColor(textHeaderColor).setFontSize(12).setBackground(headerColor).setHorizontalAlignment("center");
+        range1.setValues(firstRow);
+        addFilterRegisterPage();
+        newSheet.deleteRow(newSheet.getLastRow());
+      }
+
+      // Verifica e crea il foglio "instructions" se non esiste
+      if (!nomiFogli.includes(sheetsList()[2][0])) {
+        ss.insertSheet(sheetsList()[2][0]);
+        var newSheet = ss.getSheetByName(sheetsList()[2][0]);
+        var countSheet = ss.getSheets().length;
+        ss.moveActiveSheet(1);
+        newSheet.getRange("G2").setValue(translate('main.instruction') + ' ➡️').setHorizontalAlignment('right').setFontSize(20);
+        insertFloatingImage(newSheet, driveIDFiles()[3][0], 2, 3, 667 * 0.75, 738 * 0.75);
+
+        // Rimuove colonne e righe extra
+        var maxColumns = 7;
+        var maxRows = 30;
+
+        // Rimuove colonne extra
+        var totalColumns = newSheet.getMaxColumns();
+        if (totalColumns > maxColumns) {
+          newSheet.deleteColumns(maxColumns + 1, totalColumns - maxColumns);
+        }
+
+        // Rimuove righe extra
+        var totalRows = newSheet.getMaxRows();
+        if (totalRows > maxRows) {
+          newSheet.deleteRows(maxRows + 1, totalRows - maxRows);
+        }
+
+        // Nasconde la griglia
+        newSheet.setHiddenGridlines(true);
+      }
+      eliminaFogliNonPresentiNelVettore();
+      /* NEW CODE FOR OPTIMIZE CALL TO SHARECALENDAR */
+      sh = ss.getSheetByName(sheetsList()[1][0]);
+      var lr = sh.getLastRow();
+      var currentTime = new Date();
+
+      for (let i = 4; i <= lr; i += 1) {
+        var userEmail = sh.getRange(i, 1).getValue();
+        var lastOnline = new Date(sh.getRange(i, 2).getValue()).getTime();
+        var activation = sh.getRange(i, 3).getValue(); // Valore attuale di Attivazione
+        var newActivation = (currentTime.getTime() <= (lastOnline + timeInterval)) ? 1 : 0;
+        var newRole = newActivation === 1 ? "writer" : "reader"; // Scrittura solo se attivo
+
+        // Recupera il ruolo attuale dell'utente per evitare modifiche inutili
+        try {
+          if (aliasEmail()) { userEmail = getRealEmail(userEmail) }
+          var currentAcl = Calendar.Acl.get(myCalID()[0][0], "user:" + userEmail);
+          var currentRole = currentAcl.role;
+        } catch (e) {
+          var currentRole = null; // Se l'utente non ha ancora permessi
+        }
+
+        // Se il ruolo deve cambiare, lo aggiorniamo
+        if (currentRole !== newRole) {
+          if (aliasEmail()) { userEmail = getRealEmail(userEmail) };
+          Logger.log('usermail è ' + userEmail);
+          shareCalendar(myCalID()[0][0], getRealEmail(userEmail), newRole);
+
+          if (newRole === "writer") {
+            addEditorToProtectedSheet(sheetsList()[0][0], userEmail);
+          } else {
+            removeEditorFromProtectedSheet(sheetsList()[0][0], userEmail);
+          }
+        }
+
+        // Aggiorniamo il valore in "Attivazione" solo se è cambiato
+        if (activation !== newActivation) {
+          sh.getRange(i, 3).setValue(newActivation);
+        }
+      }
+      protectSheets();
+    } else { Logger.log(translate('alert.userPermission', { user: user })) }
   } catch (e) {
-    var currentRole = null; // Se l'utente non ha ancora permessi
-  }
-
-  // Se il ruolo deve cambiare, lo aggiorniamo
-  if (currentRole !== newRole) {
-    if (aliasEmail()) {userEmail = getRealEmail(userEmail)};
-    Logger.log('usermail è '+userEmail);
-    shareCalendar(myCalID()[0][0], getRealEmail(userEmail), newRole);
-
-    if (newRole === "writer") {
-      addEditorToProtectedSheet(sheetsList()[0][0], userEmail);
-    } else {
-      removeEditorFromProtectedSheet(sheetsList()[0][0], userEmail);
-    }
-  }
-
-  // Aggiorniamo il valore in "Attivazione" solo se è cambiato
-  if (activation !== newActivation) {
-    sh.getRange(i, 3).setValue(newActivation);
+    logErrorToManagedLogSheet("userWriteReadCalendar", e);
   }
 }
-    protectSheets();
-  } else { Logger.log(translate('alert.userPermission', { user: user })) }
+
+function logErrorToManagedLogSheet(functionName, error) {
+  const spreadsheetName = "PavOraLogErrorSheet";
+  const sheetName = "PavOraLogError";
+
+  // Trova se esiste uno Spreadsheet con quel nome
+  const files = DriveApp.getFilesByName(spreadsheetName);
+  let file, ss;
+
+  if (files.hasNext()) {
+    file = files.next();
+    ss = SpreadsheetApp.open(file);
+  } else {
+    // Se non esiste, crea un nuovo Spreadsheet
+    ss = SpreadsheetApp.create(spreadsheetName);
+    file = DriveApp.getFileById(ss.getId());
+  }
+
+  // Verifica se il foglio interno esiste
+  let logSheet = ss.getSheetByName(sheetName);
+  if (!logSheet) {
+    logSheet = ss.insertSheet(sheetName);
+    logSheet.appendRow(["Timestamp", "Function", "Error Message", "Stack Trace"]);
+  }
+
+  // Aggiunge il log
+  logSheet.appendRow([
+    new Date(),
+    functionName,
+    error.message,
+    error.stack
+  ]);
 }
+
 
 function updateTimeUser() {
   var user = getAliasEmail(Session.getEffectiveUser().getEmail());
@@ -209,18 +247,19 @@ function updateTimeUser() {
 function topMenu() {
   SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.  
     .createMenu(translate('menu.title'))
-    .addItem(translate('menu.completeMenu'), 'completeMenu')
-    .addItem(translate('menu.specialEvent'), 'specialEvent')
-    .addItem(translate('menu.specialDailyEvent'), 'specialDailyEvent')    
-    .addItem(translate('menu.viewCalendar'), 'viewCalendar')
-    .addItem(translate('menu.viewDailyCalendar'), 'viewDailyCalendar')
-    .addItem(translate('menu.viewListCalendar'), 'viewListCalendar')
+    //.addItem(translate('menu.completeMenu'), 'completeMenu')
+    .addItem(translate('menu.completeMenu'), 'showUnifiedSidebar')
+    //.addItem(translate('menu.specialDailyEvent'), 'specialDailyEvent')
+    //.addItem(translate('menu.viewCalendar'), 'viewCalendar')
+    //.addItem(translate('menu.viewDailyCalendar'), 'viewDailyCalendar')
+    //.addItem(translate('menu.viewListCalendar'), 'viewListCalendar')
     .addItem(translate('menu.manageAccess'), 'manageAccess')
     .addToUi();
   SpreadsheetApp.getActive().getSheetByName(sheetsList()[1][0]).hideSheet();
   SpreadsheetApp.getActive().getSheetByName(sheetsList()[0][0]).hideSheet();
   SpreadsheetApp.getActive().setActiveSheet(SpreadsheetApp.getActive().getSheetByName(sheetsList()[2][0]));
-  completeMenu();
+  //completeMenu(); //pre sidebar iussue
+  showUnifiedSidebar();  // ← CAMBIATO
 }
 
 function protectSheets() {
@@ -340,178 +379,37 @@ function protectSheetByName(sheetName, userEmail) {
   }
 }
 
-function completeMenu() {
+// NUOVE FUNZIONI FIX SIDEBAR IUSSUE
+function showUnifiedSidebar() {
   var user = getAliasEmail(Session.getEffectiveUser().getEmail());
+  
   if (findKey(user, users(), 0) >= 0) {
-    var permission = users()[findKey(user, users(), 0)][1];
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(permission, '05_completeMenuPage', translate('viewCalendar.mainCell') + ' Sidebar'));
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function specialEvent() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if ((users()[findKey(user, users(), 0)][1] == 'admin') || (users()[findKey(user, users(), 0)][1] == 'writer')) {
-    createUserSheet();
+    // Create user sheet if needed
+    // createUserSheet();
+    
+    // Get structures data (but NOT permission - will be loaded client-side)
     var structures = onlyStrcturesSelect(strutture());
+    
+    // DON'T add permission here - it will be loaded client-side
+    // to get the CURRENT user's permission, not the admin's
+    
+    // Use your existing doGet function to create the sidebar
     SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '8_specailEventPage', translate('main.specialEvent')));
-    //Utilities.sleep(3000);
-    //SpreadsheetApp.flush();
-    //showMonths(primo, ultimo, '', '', '');
+      .showSidebar(doGet(structures, '05_PavOra_Unified_Sidebar', translate('viewCalendar.mainCell') + ' - Sidebar'));
   } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
+    var ui = SpreadsheetApp.getUi();
     ui.alert(translate('alert.userPermission', { user: user }));
   }
 }
 
-function specialDailyEvent() {
+function getCurrentUserPermission() {
   var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if ((users()[findKey(user, users(), 0)][1] == 'admin') || (users()[findKey(user, users(), 0)][1] == 'writer')) {
-    createUserSheet();
-    //updateTimeUser();
-    /*
-    var today = convertDateInputHtml(new Date());
-    var primo = convertDateInputHtml(text2monthDays(today)[0]);
-    var ultimo = convertDateInputHtml(text2monthDays(today)[2]);
-    if (Number(preloadSheet()[0])) {showMonths(primo, ultimo, '', '', '');}
-    */
-    var structures = onlyStrcturesSelect(strutture());
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '6E_specialDailyEvent', translate('menu.specialDailyEvent')));
-    //Utilities.sleep(3000);
-    //SpreadsheetApp.flush();
-    //showMonths(primo, ultimo, '', '', '');
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
+  var userIndex = findKey(user, users(), 0);
+  
+  if (userIndex >= 0) {
+    return users()[userIndex][1];
   }
+  
+  throw new Error(translate('alert.userPermission', { user: user }));
 }
-
-function modifyEvent() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if ((users()[findKey(user, users(), 0)][1] == 'admin') || (users()[findKey(user, users(), 0)][1] == 'writer')) {
-    createUserSheet();
-    var today = convertDateInputHtml(new Date());
-    var primo = convertDateInputHtml(text2monthDays(today)[0]);
-    var ultimo = convertDateInputHtml(text2monthDays(today)[2]);
-    if (preloadSheet()) { showMonths(primo, ultimo, '', '', ''); }
-    var structures = onlyStrcturesSelect(strutture());
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '2A_modifyEventPage', translate('main.modifyEventPage')));
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function viewCalendar() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if (findKey(user, users(), 0) >= 0) {
-    createUserSheet();
-    //updateTimeUser();
-    var today = convertDateInputHtml(new Date());
-    var primo = convertDateInputHtml(text2monthDays(today)[0]);
-    var ultimo = convertDateInputHtml(text2monthDays(today)[2]);
-    if (preloadSheet()) { showOldMonths(primo, ultimo, '', '', ''); }
-    var structures = onlyStrcturesSelect(strutture());
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '3_viewCalendarPage', translate('main.viewCalendarPage')));
-    //showMonths(primo, ultimo, '', '', '');
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function viewDailyCalendar() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if (findKey(user, users(), 0) >= 0) {
-    createUserSheet();
-    var structures = onlyStrcturesSelect(strutture());
-    var today = new Date();
-    var oggi = formatDateMaster(today).dataXweb;
-    if (preloadSheet()) { createSlideAndExportToSheet(oggi, oggi, 'quartiere', '', 'NO'); } // cc o quartiere
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '4_viewDaySlidePage', translate('main.viewDaySlidePage')));
-    //createSlideAndExportToSheet(oggi, oggi, 'quartiere', '', 'NO'); // cc o quartiere    
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function viewListCalendar() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if (findKey(user, users(), 0) >= 0) {
-    createUserSheet();
-    //updateTimeUser();
-    var today = convertDateInputHtml(new Date());
-    var primo = convertDateInputHtml(text2monthDays(today)[0]);
-    var oggi = convertDateInputHtml(text2monthDays(today)[1]);
-    var ultimo = convertDateInputHtml(text2monthDays(today)[2]);
-    var permission = users()[findKey(user, users(), 0)][1];
-    var structures = onlyStrcturesSelect(strutture());
-    structures.push(permission);
-    //Logger.log('Primo è '+primo+ ' ultimo è '+ultimo);
-    if (preloadSheet()) { createListEvent(oggi, ultimo, 'E', '', '', 'agg'); }
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '5_viewListPage', translate('main.viewListPage')));
-    //createListEvent(oggi, ultimo, 'E', '', '', 'agg');
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function manageSmallRoom() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if (findKey(user, users(), 0) >= 0) {
-    createUserSheet();
-    var permission = users()[findKey(user, users(), 0)][1];
-    specialDailyEvent();
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function viewMSRData() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if (findKey(user, users(), 0) >= 0) {
-    createUserSheet();
-    //updateTimeUser();
-    var structures = onlyStrcturesSelect(strutture());
-    var permission = users()[findKey(user, users(), 0)][1];
-    var today = convertDateInputHtml(new Date());
-    var oggi = convertDateInputHtml(text2monthDays(today)[1]);
-    //Logger.log('Primo è '+primo+ ' ultimo è '+ultimo);
-    if (preloadSheet()) { createDailyScheduleFromCalendar(oggi, '60', '', ''); }
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '6B_viewMSRPage', translate('main.viewMSRPage')));
-    //createDailyScheduleFromCalendar(oggi, '60', '', '');
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
-
-function editMSRData() {
-  var user = getAliasEmail(Session.getEffectiveUser().getEmail());
-  if ((users()[findKey(user, users(), 0)][1] == 'admin') || (users()[findKey(user, users(), 0)][1] == 'writer')) {
-    createUserSheet();
-    var structures = onlyStrcturesSelect(strutture());
-    var today = convertDateInputHtml(new Date());
-    var oggi = convertDateInputHtml(text2monthDays(today)[1]);
-    if (preloadSheet()) { createDailyScheduleFromCalendar(oggi, '60', '', ''); }
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '6D1_editAskMSRPage', 'Edit a daily event'));
-    //createDailyScheduleFromCalendar(oggi, '60', '', '');
-  } else {
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    ui.alert(translate('alert.userPermission', { user: user }));
-  }
-}
+// FINE NUOVE FUNZIONI FIX SIDEBAR IUSSUE

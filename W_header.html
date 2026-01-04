@@ -32,15 +32,33 @@
 document.getElementById('buttonText').textContent = translate('menu.saveXls');
         });
 
-        // Funzione per il bottone "Chiudi"
+        // Funzione per il bottone "Chiudi/Special Event"
+        /*
         document.getElementById('killButton').onclick = function() {
             google.script.run.specialEvent();
         };
+        */
+document.getElementById('killButton').onclick = function() {
+    if (typeof showSection === 'function') {
+        showSection('specialEvent');  // Navigazione client-side
+    } else {
+        google.script.run.specialEvent();  // Fallback
+    }
+};        
 
         // Funzione per il bottone "Pagina Iniziale"
+        /*
         document.getElementById('homeButton').onclick = function() {
         google.script.run.completeMenu();
         };
+        */
+document.getElementById('homeButton').onclick = function() {
+    if (typeof showSection === 'function') {
+        showSection('menu');  // Navigazione client-side
+    } else {
+        google.script.run.completeMenu();  // Fallback
+    }
+};        
 
   // Funzione per il bottone "Salva in Excel"
   /*

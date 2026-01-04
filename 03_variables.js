@@ -220,6 +220,7 @@ function strutture() {
   return readVariables('structures', DataStructures)
 }
 
+/*
 function centroCongressi() {
   var centroCongressi = [];
   for (let i = 0; i < strutture().length; i++) {
@@ -229,6 +230,16 @@ function centroCongressi() {
   }
   return centroCongressi
 }
+*/
+function centroCongressi() {
+ var centroCongressi = [];
+ for (let i = 0; i < strutture().length; i++) {
+   if ((strutture()[i][7] == 2)||(strutture()[i][12] != '')) {
+     centroCongressi.push([strutture()[i][0], strutture()[i][12],strutture()[i][13],strutture()[i][14],strutture()[i][15],strutture()[i][5],strutture()[i][6],strutture()[i][7],strutture()[i][8],strutture()[i][9]] );
+   }
+ }
+   return centroCongressi
+ }
 
 // Only the strctures for menu
 function onlyStrcturesSelect(matrice) {
@@ -245,6 +256,7 @@ function onlyStrcturesSelect(matrice) {
 
 // Color for Mc method
 function methodMcolors() {
+  //Logger.log(readVariables('methodMcolor', DataSettings))
   return readVariables('methodMcolor', DataSettings)
 }
 

@@ -41,12 +41,15 @@ function showFreeStructEdit(first, last) {
           if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
             loc2array = eventi[i][10]; // .split(",");
             for (let j = 0; j < loc2array.length; j += 1) {
-              usedLocations.push(loc2array[j]);
+              //usedLocations.push(loc2array[j]);
+              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
               if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
-                var relationship = allStructures[findKey(loc2array[j], allStructures, 0)][10].split(","); // strutture con un grado di parentela da string a array
+                //var relationship = allStructures[findKey(loc2array[j], allStructures, 0)][10].split(","); // strutture con un grado di parentela da string a array
+                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
               }
               for (let k = 0; k < relationship.length; k += 1) {
-                usedLocations.push(relationship[k]);
+                //usedLocations.push(relationship[k]);
+                usedLocations.push(String(relationship[k]));
               }
 
             }
@@ -328,7 +331,8 @@ function parseEventString(eventString) {
   }
 
   // Usa un'espressione regolare per trovare la lettera maiuscola finale
-  let match = eventString.match(/^(.*)\s([A-Z])$/);
+  //let match = eventString.match(/^(.*)\s([A-Z])$/); // più rigororsa
+  let match = eventString.match(/^(.*?)\s([A-Z])$/);  // meno rigorosa --> PWC CONVENTION 2 opz.
 
   if (match) {
     nome = match[1]; // Estrai il nome dell'evento
@@ -468,51 +472,33 @@ function extractRegex(regex, string) {
 
 function getCellNote(first, last, id) {
   try {
-    const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const cell = sh.getActiveCell(); // Cella selezionata
-    const noteComplete = cell.getNote(); // Nota della cella selezionata
-    let note = id || ""; // Usa l'ID passato oppure inizializza
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var cell = sh.getActiveCell(); // Cella selezionata
+    var noteComplete = cell.getNote(); // Nota della cella selezionata
+    var note = id || ""; // Se ID è passato, lo usa direttamente
 
-    if (!id && noteComplete.length !== 0) {
-      const extractedId = extractRegex(regexId, noteComplete);
-      if (extractedId && extractedId.length === 8) {
-        note = extractedId;
-      } else {
-        const match = noteComplete.match(/] (.*?) \(/);
-        note = match ? match[1] : '';
-      }
+    if (!note && noteComplete.length != 0) { // Se l'ID non è passato, lo estrae
+      note = ((extractRegex(regexId, noteComplete) != 0) ? extractRegex(regexId, noteComplete) : noteComplete.split("  ")[0]);
     }
 
     if (note) {
       sh.getRange(3, 1).setValue(note).setFontSize(10);
 
-      let finalList;
-
-      if (id || (note.length === 8 && /^[A-Za-z0-9]{8}$/.test(note))) {
+      var finalList;
+      if (id) {
+        // Se è stato passato un ID, usa un intervallo ampio di default
+        finalList = logMatchingEvents(myCalID()[0][0], note, '2020-01-01', '2040-12-31');
+      } else {
+        // Se l'ID è stato estratto, usa first e last
         finalList = logMatchingEvents(myCalID()[0][0], note, first, last);
-      } else {
-
-        // Calcola intervallo date dinamico (-5 anni, +5 anni)
-        const today = new Date();
-        const start = new Date(today);
-        start.setFullYear(today.getFullYear() - 5);
-        const end = new Date(today);
-        end.setFullYear(today.getFullYear() + 5);
-
-        const startFormatted = Utilities.formatDate(start, Session.getScriptTimeZone(), "yyyy-MM-dd");
-        const endFormatted = Utilities.formatDate(end, Session.getScriptTimeZone(), "yyyy-MM-dd");
-
-        finalList = logMatchingEvents(myCalID()[0][0], note, startFormatted, endFormatted);
       }
 
-      // Converti date da finalList
-      if (finalList && finalList.length > 0) {
-        first = convertDateInputHtml(finalList[0][18]);
-        last = convertDateInputHtml(finalList[finalList.length - 1][19]);
-        showFreeStructModifyEvent(first, last, finalList, note);
-      } else {
-        SpreadsheetApp.getUi().alert(translate('modifyEvent.noEventFound', { note: note }));
-      }
+      // Converti le date di inizio e fine evento
+      first = convertDateInputHtml(finalList[0][18]);
+      last = convertDateInputHtml(finalList[finalList.length - 1][19]);
+
+      //Logger.log(JSON.stringify(finalList));
+      showFreeStructModifyEvent(first, last, finalList, note);
     }
 
     return note || translate('modifyEvent.emptyCell');
@@ -563,14 +549,14 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
           if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
             loc2array = eventi[i][10]; // .split(",");
             for (let j = 0; j < loc2array.length; j += 1) {
-              usedLocations.push(loc2array[j]);
+              //usedLocations.push(loc2array[j]);
+              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
               if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
-                var relationship = strutture()[findKey(loc2array[j], strutture(), 0)][10].split(',').map(s => s.trim()); // strutture con un grado di parentela da string a array
+                //var relationship = strutture()[findKey(loc2array[j], strutture(), 0)][10].split(',').map(s => s.trim()); // strutture con un grado di parentela da string a array
+                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
               }
-              if (loc2array != 0) {
-                for (let k = 0; k < relationship.length; k += 1) {
-                  usedLocations.push(relationship[k]);
-                }
+              for (let k = 0; k < relationship.length; k += 1) {
+                usedLocations.push(String(relationship[k]));
               }
 
             }
@@ -591,7 +577,7 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
         usedUnique = usedUnique.filter(element => !colArray.includes(element));
       } else {
         Logger.log("Nessun valore valido per il filtro: colValue = " + colValue);
-      }      
+      }
       var freeStructures = strutture();
       for (let i = 0; i < usedUnique.length; i += 1) {
         if (findKey(usedUnique[i], freeStructures, 0) >= 0) {
@@ -614,9 +600,25 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
     structures.unshift(refOp());
     structures.unshift(typeEv());
 
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '2B_modifyEventPage', translate('modifyEvent.editDelEvent')));
+    /*
+        SpreadsheetApp.getUi()
+          .showSidebar(doGet(structures, '2B_modifyEventPage', translate('modifyEvent.editDelEvent')));
+          */
+          
+    // chiamata alla dialog
+    var htmlOutput = doGet(structures, '2B_modifyEventPage', translate('modifyEvent.editDelEvent'));
 
+    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
+    htmlOutput
+      .setWidth(800)
+      .setHeight(600);
+
+    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
+    var dialogTitle = translate('modifyEvent.editDelEvent');
+
+    // 4. Mostro la finestra di dialogo modale.
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
+    // fine chiamata alla dialog
     updateTimeUser();
 
   } catch (error) {
@@ -626,82 +628,113 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
 
 }
 
-// Function to delete Events!!!
+// Delete events with confirmation
 function deleteEvents(eventId, first, last, what, activeRow) {
   try {
     createUserSheet();
     updateTimeUser();
-    var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var eventi = findEventsByKeyword(myCalID()[0][0], eventId, first, last, what);
-    //Logger.log(eventi);
-    var testo = translate('modifyEvent.warEventDel', { eventId: eventId });
-    var matrice = [];
+    
+    const ui = SpreadsheetApp.getUi();
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
+    
+    // Trova gli eventi da cancellare
+    const eventi = findEventsByKeyword(myCalID()[0][0], eventId, first, last, what);
+    
+    // Costruisci il messaggio di conferma con la lista degli eventi
+    let testo = translate('modifyEvent.warEventDel', { eventId: eventId });
+    const matrice = [];
+    
     for (let i = 0; i < eventi.length; i += 1) {
-      testo = testo + eventi[i].getTitle() + '\t | \t' + convertDate(eventi[i].getStartTime()) + '\n';
-      matrice.push([eventi[i].getTitle(), eventi[i].getStartTime(), eventi[i].getEndTime(), eventi[i].getDescription(), eventi[i].getLocation()]);
+      testo += eventi[i].getTitle() + '\t | \t' + convertDate(eventi[i].getStartTime()) + '\n';
+      matrice.push([
+        eventi[i].getTitle(),
+        eventi[i].getStartTime(),
+        eventi[i].getEndTime(),
+        eventi[i].getDescription(),
+        eventi[i].getLocation()
+      ]);
     }
-    //sh.setActiveRange(sh.getRange('A1'));
-    var calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
-    var response = ui.alert(translate('modifyEvent.confirmYN'), testo, ui.ButtonSet.YES_NO);
-
-    // Gestisci la risposta dell'utente
-    if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == true)) {
-      //cancellaEventi(eventi);
-      // Itera su ciascun ID evento e prova a cancellarlo
-      for (let i = 0; i < eventi.length; i += 1) {
-        var event = calendar.getEventById(eventi[i].getId());
-        if (event) {
-          event.deleteEvent();
-          //Logger.log('Evento con ID ' + eventId + ' cancellato.');
-        } else {
-          //Logger.log('Evento con ID ' + eventId + ' non trovato.');
-        }
-      }
-      oggi = new Date();
-      utenteEmail = Session.getEffectiveUser().getEmail();
-      var eventID = (parseEventDetails(matrice[0][3]).id != '') ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome : parseEventString(matrice[0][0]).nome;
-      if (typeof what !== 'undefined') {
-        if (what == 'hall') {
-          addLogRevision(oggi, translate('modifyEvent.delRoomsOK'), eventID, utenteEmail, matrice);
-          createDailyScheduleFromCalendar(first, 60, '');
-          specialDailyEvent();
-        } else if (typeof activeRow != 'undefined') {
-          addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
-
-          // Ottieni il numero di colonne del foglio
-          var numColumns = sh.getLastColumn();
-
-          // Crea un array con il testo "cancellato" per ogni cella nella riga
-          var rowValues = Array(numColumns).fill(translate('modifyEvent.delOK'));
-
-          // Scrivi il testo "cancellato" su tutte le celle della riga
-          sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
-        }
-      } else {
-        addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
-        specialEvent();
-        const prefs = getUserBrowserSettings();
-        showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
-      }
-      ui.alert(translate('modifyEvent.delOKMessage'));
-    } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
+    
+    // Chiedi conferma all'utente
+    const response = ui.alert(translate('modifyEvent.confirmYN'), testo, ui.ButtonSet.YES_NO);
+    
+    // ========== GESTIONE RISPOSTA UTENTE ==========
+    
+    // Caso 1: Utente ha detto NO -> Esci senza fare nulla
+    if (response !== ui.Button.YES) {
+      ui.alert(translate('modifyEvent.delNOMessage'));
+      return {
+        success: false,
+        reason: 'USER_CANCELLED'
+      };
+    }
+    
+    // Caso 2: Utente ha detto YES ma non ha permessi
+    if (!checkUserWritePermission(myCalID()[0][0])) {
       ui.alert(translate('modifyEvent.waitSomeTime'));
-    } else {
-      if (what != null && what === 'hall') {
-        specialDailyEvent();
-        createDailyScheduleFromCalendar(first, 60, '');
-        ui.alert(translate('modifyEvent.delNOMessage'));
-      } else {
-        specialEvent();
-        const prefs = getUserBrowserSettings();
-        showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
-        ui.alert(translate('modifyEvent.delNOMessage'));
+      return {
+        success: false,
+        reason: 'NO_PERMISSION'
+      };
+    }
+    
+    // Caso 3: Utente ha detto YES e ha i permessi -> Procedi con la cancellazione
+    
+    // Cancella gli eventi
+    for (let i = 0; i < eventi.length; i += 1) {
+      const event = calendar.getEventById(eventi[i].getId());
+      if (event) {
+        event.deleteEvent();
       }
     }
+    
+    // Log della cancellazione
+    const oggi = new Date();
+    const utenteEmail = Session.getEffectiveUser().getEmail();
+    const eventID = (parseEventDetails(matrice[0][3]).id !== '') 
+      ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome 
+      : parseEventString(matrice[0][0]).nome;
+    
+    // Gestione post-cancellazione in base al contesto
+    if (typeof what !== 'undefined') {
+      if (what === 'hall') {
+        // Cancellazione da vista sale
+        addLogRevision(oggi, translate('modifyEvent.delRoomsOK'), eventID, utenteEmail, matrice);
+        createDailyScheduleFromCalendar(first, 60, '');
+        specialDailyEvent();
+      } else if (typeof activeRow !== 'undefined') {
+        // Cancellazione da lista eventi
+        addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
+        
+        // Marca la riga come cancellata
+        const numColumns = sh.getLastColumn();
+        const rowValues = Array(numColumns).fill(translate('modifyEvent.delOK'));
+        sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
+      }
+    } else {
+      // Cancellazione da calendario generale
+      addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
+      const prefs = getUserBrowserSettings();
+      showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
+    }
+    
+    ui.alert(translate('modifyEvent.delOKMessage'));
+    
+    // Cancellazione avvenuta con successo
+    return {
+      success: true,
+      eventId: eventID,
+      deletedCount: eventi.length
+    };
+    
   } catch (error) {
-    // Mostra un messaggio tramite ui.alert
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+    return {
+      success: false,
+      reason: 'ERROR',
+      error: error.message
+    };
   }
 }
 
@@ -796,21 +829,39 @@ function deleteThenModifyEvents(eventID, first, last, outputEvents, what) {
         if (what == 'hall') {
           addLogRevision(oggi, translate('modifyEvent.logCancModOne'), eventID, utenteEmail, matrice);
           modifyEvents(first, last, outputEvents, what);
+return {
+  success: true
+};          
         }
       } else {
         addLogRevision(oggi, translate('modifyEvent.logCancMod'), eventID, utenteEmail, matrice);
         modifyEvents(first, last, outputEvents);
+return {
+  success: true
+};        
       }
     } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
       ui.alert(translate('modifyEvent.waitSomeTime'));
+  return {
+    success: false,
+    reason: 'WAIT'
+  };      
     } else {
       ui.alert(translate('modifyEvent.opNOMessage'));
+  return {
+    success: false,
+    reason: 'No message'
+  };      
     }
 
 
   } catch (error) {
     // Mostra un messaggio tramite ui.alert
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+  return {
+    success: false,
+    reason: 'ERROR'
+  };
   }
 }
 
@@ -843,7 +894,7 @@ function modifyEvents(first, last, array, what, activeRow) {
   addLogRevision(oggi, translate('modifyEvent.logEditMod'), eventID, utenteEmail, matrix);
   if (typeof what !== 'undefined') {
     if (what == 'hall') {
-      manageSmallRoom();
+      //manageSmallRoom();
       createDailyScheduleFromCalendar(first, 60, '', '', 'H24');
     }
   } else if (what == 'updateDetailsEvent') {
@@ -851,6 +902,6 @@ function modifyEvents(first, last, array, what, activeRow) {
   } else {
     //viewCalendar(); // to refresh dialog window
     //completeMenu(); // to reload the menu
-    specialEvent();
+    //specialEvent();
   }
 }

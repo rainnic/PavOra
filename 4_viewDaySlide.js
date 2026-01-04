@@ -6,7 +6,21 @@
 * Please refer to the LICENSE file for the full license text.
 */
 function testInsertExSlide() {
-  createSlideAndExportToSheet('2024-12-03', '2024-12-03', 'quartiere', '', 'NO'); // cc o quartiere
+  //createSlideAndExportToSheet('2025-09-10', '2025-09-11', 'cc', '', 'SI'); // cc o quartiere
+  var start = Date.now();  
+  createSlideAndExportToSheetImproved('2025-09-10', '2025-09-11', 'cc', '', 'SI');
+  /*
+        .createSlideAndExportToSheetImproved(
+            startDate, 
+            finishDate, 
+            cosa, 
+            keyword, 
+            editable,
+            colorAssignments  // 👈 PASSA LA MAPPA COLORI
+        );
+  */
+  var end = Date.now();
+  Logger.log("Tempo di esecuzione funzione: " + (end - start) / 1000 + " secondi");  
 }
 
 function copyAndRenamePresentation(presentationId, newPresentationName) {
@@ -760,4 +774,1051 @@ function CreateBoxText(presentationId, pageNum, random, data, structure, event, 
     // Mostra un messaggio tramite ui.alert
     SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
   }
+}
+
+// ------------------------------------ New ------------------------------------------------
+function mergePresentationsClean(sourcePresentationIds, templateId, finalName) {
+
+  // Crea presentazione finale dal template
+  var finalPresentationId = copyAndRenamePresentation(templateId, finalName);
+  Logger.log('✓ Creata presentazione finale: ' + finalPresentationId);
+
+  var finalPresentation = SlidesApp.openById(finalPresentationId);
+
+  // Rimuove TUTTE le slide del template
+  finalPresentation.getSlides().forEach(slide => slide.remove());
+  finalPresentation.saveAndClose();
+
+  Utilities.sleep(1000);
+
+  // Copia slide 1:1 con API ufficiale
+  sourcePresentationIds.forEach((sourceId, i) => {
+
+    Logger.log('--- Copia da presentazione ' + (i + 1) + '/' + sourcePresentationIds.length);
+
+    var sourcePresentation = SlidesApp.openById(sourceId);
+    var sourceSlides = sourcePresentation.getSlides();
+
+    sourceSlides.forEach((slide, j) => {
+
+      Slides.Presentations.Pages.copy(
+        { presentationId: finalPresentationId },
+        sourceId,
+        slide.getObjectId()
+      );
+
+      Logger.log('  ✓ Slide ' + (j + 1) + ' copiata');
+      Utilities.sleep(300);
+    });
+
+    sourcePresentation.saveAndClose();
+  });
+
+  Logger.log('✓ Unione completata');
+  return finalPresentationId;
+}
+
+function olDCreateSlideAndExportToSheetImproved(first, last, cosa, keyword, editable) {
+
+  resetFoglioConNuovo();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // togliere le celle congelate
+  sheet.setFrozenRows(0);
+  sheet.setFrozenColumns(0);
+
+  // Nasconde la griglia
+  sheet.setHiddenGridlines(true);
+
+  // -------------------------
+  // DATE
+  // -------------------------
+  var f = first.split('-');
+  var l = last.split('-');
+
+  var firstDate = new Date(+f[0], f[1] - 1, +f[2]);
+  var lastDate  = new Date(+l[0], l[1] - 1, +l[2] + 1);
+
+  var numDays = (lastDate - firstDate) / (1000 * 3600 * 24);
+
+  Logger.log('INIZIO PROCESSO');
+  Logger.log('Numero giorni: ' + numDays);
+  Logger.log('Editable: ' + editable);
+
+  // -------------------------
+  // FASE 1 — SLIDE GIORNALIERE
+  // -------------------------
+  var presentationIds = [];
+  var currentDate = new Date(firstDate);
+
+  for (let d = 0; d < numDays; d++) {
+
+    var dateString = formatDateForFilename(currentDate);
+    var name = dateString + ' - TEMP - ' + cosa;
+
+    var templateId = (cosa === 'cc')
+      ? templateSlides()[1][0]
+      : templateSlides()[0][0];
+
+    var presId = copyAndRenamePresentation(templateId, name);
+
+    viewEvents(
+      1,
+      new Date(currentDate),
+      1,
+      selectedMode(),
+      presId,
+      cosa,
+      keyword
+    );
+
+    presentationIds.push(presId);
+    Utilities.sleep(1500);
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  Logger.log('Slide giornaliere create: ' + presentationIds.length);
+
+  // -------------------------
+  // FASE 2 — UNIONE (PULITA)
+  // -------------------------
+// FASE 2: Unione slide (Versione Anti-Quota Exceeded)
+var finalPresentationId = null;
+
+Logger.log('==========================================');
+Logger.log('Controllo editable: "' + editable + '" === "YES" o "SI" ? ' + (editable === 'YES' || editable === 'SI'));
+Logger.log('==========================================');
+
+if (editable === 'YES' || editable === 'SI') {
+  Logger.log('=== FASE 2: INIZIO Unione slide (Metodo Nativo) ===');
+  
+  try {
+    var today = new Date();
+    // Assicurati che le variabili 'cosa' e le funzioni 'formatDateMaster'/'translate' siano accessibili qui
+    var finalName = formatDateMaster(today).dataXfile + translate('planPage.slideFile') + cosa;
+    Logger.log('Nome presentazione finale: ' + finalName);
+    
+    // 1. Crea la presentazione finale
+    if (cosa === 'cc') {
+      finalPresentationId = copyAndRenamePresentation(templateSlides()[1][0], finalName);
+    } else {
+      finalPresentationId = copyAndRenamePresentation(templateSlides()[0][0], finalName);
+    }
+    
+    Logger.log('✓ Presentazione finale creata: ' + finalPresentationId);
+    
+    // 2. Apri la presentazione finale
+    var finalPresentation = SlidesApp.openById(finalPresentationId);
+    
+    // 3. Rimuovi le slide template (se necessario)
+    var initialSlides = finalPresentation.getSlides();
+    if (initialSlides.length > 0) {
+      Logger.log('Rimozione ' + initialSlides.length + ' slide template...');
+      for (let i = initialSlides.length - 1; i >= 0; i--) {
+        initialSlides[i].remove();
+      }
+    }
+    
+    // Salva per consolidare la rimozione
+    finalPresentation.saveAndClose();
+    Utilities.sleep(2000); // Pausa di sicurezza 2 secondi
+    
+    // 4. Ciclo sulle presentazioni giornaliere
+    Logger.log('Inizio unione da ' + presentationIds.length + ' file...');
+    
+    for (let i = 0; i < presentationIds.length; i++) {
+      try {
+        // Riapri la finale ad ogni ciclo principale per evitare disconnessioni
+        finalPresentation = SlidesApp.openById(finalPresentationId);
+        
+        var sourceId = presentationIds[i];
+        Logger.log('--- Processando file ' + (i+1) + '/' + presentationIds.length + ' ---');
+        
+        var sourcePresentation = SlidesApp.openById(sourceId);
+        var sourceSlides = sourcePresentation.getSlides();
+        
+        if (sourceSlides.length === 0) {
+          Logger.log('  Attenzione: File sorgente vuoto, salto.');
+          sourcePresentation.saveAndClose();
+          continue;
+        }
+
+        // Copia le slide
+        for (let j = 0; j < sourceSlides.length; j++) {
+          Logger.log('  Appendendo slide ' + (j+1));
+          
+          // --- IL CORE DELLA SOLUZIONE ---
+          // appendSlide copia TUTTO (formattazione, font, immagini) in 1 colpo solo.
+          // Non usa quota API complessa.
+          finalPresentation.appendSlide(sourceSlides[j]);
+          
+          // Pausa breve (2 secondi) tra una slide e l'altra è sufficiente
+          Utilities.sleep(2000); 
+        }
+        
+        // Chiudi il file sorgente corrente
+        sourcePresentation.saveAndClose();
+        
+        // Salva la finale parzialmente (utile se ci sono molti file)
+        finalPresentation.saveAndClose();
+        
+        Logger.log('  ✓ File ' + (i+1) + ' completato. Pausa di raffreddamento...');
+        // Pausa media tra un file e l'altro (3 secondi)
+        Utilities.sleep(3000);
+        
+      } catch (e) {
+        Logger.log('  ✗ Errore nel file ' + (i+1) + ': ' + e.toString());
+        // Se fallisce, prova a salvare la finale comunque
+        try { finalPresentation.saveAndClose(); } catch(err) {}
+      }
+    }
+    
+    // Verifica finale
+    finalPresentation = SlidesApp.openById(finalPresentationId);
+    var finalCount = finalPresentation.getSlides().length;
+    finalPresentation.saveAndClose();
+    
+    Logger.log('==========================================');
+    Logger.log('✓ FASE 2 COMPLETATA');
+    Logger.log('Totale slide finali: ' + finalCount);
+    Logger.log('ID Finale: ' + finalPresentationId);
+    Logger.log('==========================================');
+
+  } catch (e) {
+    Logger.log('✗ ERRORE CRITICO FASE 2: ' + e.toString());
+    Logger.log(e.stack);
+  }
+} else {
+  Logger.log('=== FASE 2: SALTATA (editable !== YES) ===');
+}
+
+  // -------------------------
+  // FASE 3 — EXPORT SU SHEET
+  // -------------------------
+  var exportIds = (finalPresentationId)
+    ? [finalPresentationId]
+    : presentationIds;
+
+  var lastRow = 2;
+
+  exportIds.forEach(id => {
+
+    var pres = SlidesApp.openById(id);
+    pres.getSlides().forEach(slide => {
+
+      var url = 'https://docs.google.com/presentation/d/' +
+                id + '/export/png?pageid=' +
+                slide.getObjectId();
+
+      var blob = UrlFetchApp.fetch(url, {
+        headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+      }).getBlob();
+
+      sheet.insertImage(blob, 1, lastRow);
+      lastRow += 53;
+    });
+
+    pres.saveAndClose();
+  });
+
+  // -------------------------
+  // FASE 4 — PULIZIA
+  // -------------------------
+  presentationIds.forEach(id => DriveApp.getFileById(id).setTrashed(true));
+
+  if (finalPresentationId) {
+    sheet.getRange('A1').setValue(translate('planPage.slideFileAlert'));
+    sheet.getRange('B1').setValue(
+      'https://docs.google.com/presentation/d/' +
+      finalPresentationId + '/edit'
+    );
+  }
+
+  Logger.log('PROCESSO COMPLETATO');
+}
+
+/**
+ * Funzione helper per formattare la data nel nome file
+ */
+function formatDateForFilename(date) {
+  var year = date.getFullYear();
+  var month = ('0' + (date.getMonth() + 1)).slice(-2);
+  var day = ('0' + date.getDate()).slice(-2);
+  return year + '-' + month + '-' + day;
+}
+
+//
+// PER COLORAZIONE PLAN
+//
+/**
+ * ==================================================
+ * FUNZIONI APPS SCRIPT PER GESTIONE COLORI
+ * ==================================================
+ */
+
+/**
+ * Restituisce lista eventi unici nel periodo selezionato
+ * @param {string} startDate - Data inizio (YYYY-MM-DD)
+ * @param {string} finishDate - Data fine (YYYY-MM-DD)
+ * @param {string} keyword - Parola chiave filtro (opzionale)
+ * @return {Array} Array di oggetti evento con acronimo
+ */
+/**
+ * getUniqueEventsForPeriod - USA evt[3] come acronimo
+ */
+function getUniqueEventsForPeriod(startDate, finishDate, keyword) {
+  try {
+    Logger.log('========================================');
+    Logger.log('DEBUG: getUniqueEventsForPeriod');
+    Logger.log('StartDate: ' + startDate);
+    Logger.log('FinishDate: ' + finishDate);
+    
+    const parts1 = startDate.split('-');
+    const parts2 = finishDate.split('-');
+    const fromDate = parts1[2] + '/' + parts1[1] + '/' + parts1[0];
+    const toDate = parts2[2] + '/' + parts2[1] + '/' + parts2[0];
+    
+    const eventi = events2Array(fromDate, toDate, categories()[0][0], keyword || '');
+    
+    Logger.log('Eventi caricati: ' + (eventi ? eventi.length : 'NULL'));
+    
+    if (!eventi || eventi.length === 0) {
+      return [];
+    }
+    
+    // Debug primo evento
+    if (eventi.length > 0) {
+      Logger.log('Primo evento:');
+      Logger.log('  [3] TitleNoSpaces: ' + eventi[0][3]);
+      Logger.log('  [3] Senza ultima lettera: ' + eventi[0][3].slice(0, -1));
+    }
+    
+    const uniqueMap = new Map();
+    
+    eventi.forEach(function(evt) {
+      // ========================================
+      // RIMUOVI ULTIMA LETTERA (E, D, A, ecc.)
+      // ========================================
+      const fullAcronym = evt[3]; // es: "CongressoPincoPallinoE"
+      const acronym = fullAcronym.slice(0, -1); // es: "CongressoPincoPallino"
+      // ========================================
+      
+      if (!uniqueMap.has(acronym)) {
+        uniqueMap.set(acronym, {
+          acronym: acronym, // Senza ultima lettera
+          fullName: evt[2],
+          shortName: evt[2].substring(0, 30) + (evt[2].length > 30 ? '...' : ''),
+          category: evt[1],
+          currentColor: evt[7]
+        });
+      }
+    });
+    
+    Logger.log('Eventi unici trovati: ' + uniqueMap.size);
+    
+    const result = Array.from(uniqueMap.values());
+    
+    // Log primi 3
+    result.slice(0, 3).forEach(function(evt, idx) {
+      Logger.log('  ' + idx + ': ' + evt.acronym);
+    });
+    
+    Logger.log('========================================');
+    return result;
+    
+  } catch (error) {
+    Logger.log('✗ ERRORE: ' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Converte formato data da YYYY-MM-DD a DD/MM/YYYY
+ */
+function convertDateFormat(dateStr) {
+  const parts = dateStr.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+/**
+ * ==================================================
+ * FUNZIONE MIGLIORATA: createSlideAndExportToSheetImproved
+ * ==================================================
+ * Genera slide una alla volta con:
+ * - Mappa colori predefinita
+ * - Pause tra le chiamate API
+ * - Unione finale opzionale
+ */
+function createSlideAndExportToSheetImproved(first, last, cosa, keyword, editable, colorMap) {
+  
+  // Inizializza
+  resetFoglioConNuovo();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  sheet.setFrozenRows(0);
+  sheet.setFrozenColumns(0);
+  sheet.setHiddenGridlines(true);
+  
+  // -------------------------
+  // ELABORA DATE
+  // -------------------------
+  var f = first.split('-');
+  var l = last.split('-');
+  var firstDate = new Date(+f[0], f[1] - 1, +f[2]);
+  var lastDate = new Date(+l[0], l[1] - 1, +l[2] + 1);
+  var numDays = (lastDate - firstDate) / (1000 * 3600 * 24);
+  
+  Logger.log('========================================');
+  Logger.log('INIZIO PROCESSO MIGLIORATO');
+  Logger.log('Numero giorni: ' + numDays);
+  Logger.log('Editable: ' + editable);
+  Logger.log('Mappa colori ricevuta: ' + JSON.stringify(colorMap));
+  Logger.log('========================================');
+  
+  // -------------------------
+  // FASE 1: GENERA SLIDE GIORNALIERE
+  // (una alla volta con pause)
+  // -------------------------
+  var presentationIds = [];
+  var currentDate = new Date(firstDate);
+  
+  for (let d = 0; d < numDays; d++) {
+    
+    Logger.log('--- Giorno ' + (d + 1) + ' di ' + numDays + ' ---');
+    
+    var dateString = formatDateForFilename(currentDate);
+    var name = dateString + ' - TEMP - ' + cosa;
+    
+    var templateId = (cosa === 'cc') 
+      ? templateSlides()[1][0] 
+      : templateSlides()[0][0];
+    
+    var presId = copyAndRenamePresentation(templateId, name);
+    
+    // GENERA SLIDE CON MAPPA COLORI
+viewEventsWithColorMap(
+      1,
+      new Date(currentDate),
+      1,
+      selectedMode(),
+      presId,
+      cosa,
+      keyword,
+      colorMap  // Assicurati che questo parametro sia passato
+    );
+    
+    presentationIds.push(presId);
+    
+    // PAUSA TRA GIORNI (più lunga per evitare quota)
+    Logger.log('Pausa di sicurezza...');
+    Utilities.sleep(5000); // 5 secondi tra un giorno e l'altro
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  Logger.log('✓ Slide giornaliere create: ' + presentationIds.length);
+  
+  // -------------------------
+  // FASE 2: UNIONE (SE RICHIESTA)
+  // -------------------------
+  var finalPresentationId = null;
+  
+  if (editable === 'SI') {
+    Logger.log('=== FASE 2: Unione slide ===');
+    
+    try {
+      var today = new Date();
+      var finalName = formatDateMaster(today).dataXfile + 
+                      translate('planPage.slideFile') + cosa;
+      
+      // Crea presentazione finale
+      if (cosa === 'cc') {
+        finalPresentationId = copyAndRenamePresentation(templateSlides()[1][0], finalName);
+      } else {
+        finalPresentationId = copyAndRenamePresentation(templateSlides()[0][0], finalName);
+      }
+      
+      Logger.log('✓ Presentazione finale creata: ' + finalPresentationId);
+      
+      var finalPresentation = SlidesApp.openById(finalPresentationId);
+      
+      // Rimuovi slide template
+      var initialSlides = finalPresentation.getSlides();
+      if (initialSlides.length > 0) {
+        for (let i = initialSlides.length - 1; i >= 0; i--) {
+          initialSlides[i].remove();
+        }
+      }
+      
+      finalPresentation.saveAndClose();
+      Utilities.sleep(2000);
+      
+      // Copia slide da ogni presentazione giornaliera
+      for (let i = 0; i < presentationIds.length; i++) {
+        
+        Logger.log('--- Unione file ' + (i+1) + '/' + presentationIds.length + ' ---');
+        
+        finalPresentation = SlidesApp.openById(finalPresentationId);
+        var sourcePresentation = SlidesApp.openById(presentationIds[i]);
+        var sourceSlides = sourcePresentation.getSlides();
+        
+        if (sourceSlides.length === 0) {
+          Logger.log('  Attenzione: File sorgente vuoto');
+          sourcePresentation.saveAndClose();
+          continue;
+        }
+        
+        // Copia slide
+        for (let j = 0; j < sourceSlides.length; j++) {
+          Logger.log('  Appendendo slide ' + (j+1));
+          finalPresentation.appendSlide(sourceSlides[j]);
+          Utilities.sleep(2000); // Pausa tra slide
+        }
+        
+        sourcePresentation.saveAndClose();
+        finalPresentation.saveAndClose();
+        
+        Logger.log('  ✓ File ' + (i+1) + ' completato');
+        Utilities.sleep(3000); // Pausa tra file
+      }
+      
+      finalPresentation = SlidesApp.openById(finalPresentationId);
+      var finalCount = finalPresentation.getSlides().length;
+      finalPresentation.saveAndClose();
+      
+      Logger.log('✓ Unione completata - Totale slide: ' + finalCount);
+      
+    } catch (e) {
+      Logger.log('✗ ERRORE FASE 2: ' + e.toString());
+    }
+  } else {
+    Logger.log('=== FASE 2: SALTATA (editable !== SI) ===');
+  }
+  
+  // -------------------------
+  // FASE 3: EXPORT SU SHEET
+  // (un giorno alla volta)
+  // -------------------------
+  Logger.log('=== FASE 3: Export su Sheet ===');
+  
+  var exportIds = (finalPresentationId) ? [finalPresentationId] : presentationIds;
+  var lastRow = 2;
+  
+  exportIds.forEach((id, idx) => {
+    
+    Logger.log('Export presentazione ' + (idx + 1) + ' di ' + exportIds.length);
+    
+    var pres = SlidesApp.openById(id);
+    var slides = pres.getSlides();
+    
+    slides.forEach((slide, slideIdx) => {
+      
+      var url = 'https://docs.google.com/presentation/d/' +
+                id + '/export/png?pageid=' +
+                slide.getObjectId();
+      
+      try {
+        var blob = UrlFetchApp.fetch(url, {
+          headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+        }).getBlob();
+        
+        sheet.insertImage(blob, 1, lastRow);
+        lastRow += 53;
+        
+        Logger.log('  ✓ Slide ' + (slideIdx + 1) + ' esportata');
+        
+        // Pausa tra export
+        Utilities.sleep(1000);
+        
+      } catch (e) {
+        Logger.log('  ✗ Errore export slide: ' + e.toString());
+      }
+    });
+    
+    pres.saveAndClose();
+  });
+  
+  // -------------------------
+  // FASE 4: PULIZIA
+  // -------------------------
+  Logger.log('=== FASE 4: Pulizia file temporanei ===');
+  
+  presentationIds.forEach(id => {
+    try {
+      DriveApp.getFileById(id).setTrashed(true);
+    } catch (e) {
+      Logger.log('Errore eliminazione file: ' + e.toString());
+    }
+  });
+  
+  // Link finale
+  if (finalPresentationId) {
+    sheet.getRange('A1').setValue(translate('planPage.slideFileAlert'));
+    sheet.getRange('B1').setValue(
+      'https://docs.google.com/presentation/d/' +
+      finalPresentationId + '/edit'
+    );
+  }
+  
+  Logger.log('========================================');
+  Logger.log('✓ PROCESSO COMPLETATO');
+  Logger.log('========================================');
+}
+
+/**
+ * Converte formato data da YYYY-MM-DD a DD/MM/YYYY
+ */
+function convertDateFormat(dateStr) {
+  const parts = dateStr.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+/**
+ * ==================================================
+ * FUNZIONE MIGLIORATA: createSlideAndExportToSheetImproved
+ * ==================================================
+ * Genera slide una alla volta con:
+ * - Mappa colori predefinita
+ * - Pause tra le chiamate API
+ * - Unione finale opzionale
+ */
+function createSlideAndExportToSheetImproved(first, last, cosa, keyword, editable, colorMap) {
+  
+  // Inizializza
+  resetFoglioConNuovo();
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  sheet.setFrozenRows(0);
+  sheet.setFrozenColumns(0);
+  sheet.setHiddenGridlines(true);
+  
+  // -------------------------
+  // ELABORA DATE
+  // -------------------------
+  var f = first.split('-');
+  var l = last.split('-');
+  var firstDate = new Date(+f[0], f[1] - 1, +f[2]);
+  var lastDate = new Date(+l[0], l[1] - 1, +l[2] + 1);
+  var numDays = (lastDate - firstDate) / (1000 * 3600 * 24);
+  
+  Logger.log('========================================');
+  Logger.log('INIZIO PROCESSO MIGLIORATO');
+  Logger.log('Numero giorni: ' + numDays);
+  Logger.log('Editable: ' + editable);
+  Logger.log('Mappa colori ricevuta: ' + JSON.stringify(colorMap));
+  Logger.log('========================================');
+  
+  // -------------------------
+  // FASE 1: GENERA SLIDE GIORNALIERE
+  // (una alla volta con pause)
+  // -------------------------
+  var presentationIds = [];
+  var currentDate = new Date(firstDate);
+  
+  for (let d = 0; d < numDays; d++) {
+    
+    Logger.log('--- Giorno ' + (d + 1) + ' di ' + numDays + ' ---');
+    
+    var dateString = formatDateForFilename(currentDate);
+    var name = dateString + ' - TEMP - ' + cosa;
+    
+    var templateId = (cosa === 'cc') 
+      ? templateSlides()[1][0] 
+      : templateSlides()[0][0];
+    
+    var presId = copyAndRenamePresentation(templateId, name);
+    
+    // GENERA SLIDE CON MAPPA COLORI
+    viewEventsWithColorMap(
+      1,
+      new Date(currentDate),
+      1,
+      selectedMode(),
+      presId,
+      cosa,
+      keyword,
+      colorMap  // 👈 PASSA LA MAPPA
+    );
+    
+    presentationIds.push(presId);
+    
+    // PAUSA TRA GIORNI (più lunga per evitare quota)
+    Logger.log('Pausa di sicurezza...');
+    Utilities.sleep(5000); // 5 secondi tra un giorno e l'altro
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  Logger.log('✓ Slide giornaliere create: ' + presentationIds.length);
+  
+  // -------------------------
+  // FASE 2: UNIONE (SE RICHIESTA)
+  // -------------------------
+  var finalPresentationId = null;
+  
+  if (editable === 'SI') {
+    Logger.log('=== FASE 2: Unione slide ===');
+    
+    try {
+      var today = new Date();
+      var finalName = formatDateMaster(today).dataXfile + 
+                      translate('planPage.slideFile') + cosa;
+      
+      // Crea presentazione finale
+      if (cosa === 'cc') {
+        finalPresentationId = copyAndRenamePresentation(templateSlides()[1][0], finalName);
+      } else {
+        finalPresentationId = copyAndRenamePresentation(templateSlides()[0][0], finalName);
+      }
+      
+      Logger.log('✓ Presentazione finale creata: ' + finalPresentationId);
+      
+      var finalPresentation = SlidesApp.openById(finalPresentationId);
+      
+      // Rimuovi slide template
+      var initialSlides = finalPresentation.getSlides();
+      if (initialSlides.length > 0) {
+        for (let i = initialSlides.length - 1; i >= 0; i--) {
+          initialSlides[i].remove();
+        }
+      }
+      
+      finalPresentation.saveAndClose();
+      Utilities.sleep(2000);
+      
+      // Copia slide da ogni presentazione giornaliera
+      for (let i = 0; i < presentationIds.length; i++) {
+        
+        Logger.log('--- Unione file ' + (i+1) + '/' + presentationIds.length + ' ---');
+        
+        finalPresentation = SlidesApp.openById(finalPresentationId);
+        var sourcePresentation = SlidesApp.openById(presentationIds[i]);
+        var sourceSlides = sourcePresentation.getSlides();
+        
+        if (sourceSlides.length === 0) {
+          Logger.log('  Attenzione: File sorgente vuoto');
+          sourcePresentation.saveAndClose();
+          continue;
+        }
+        
+        // Copia slide
+        for (let j = 0; j < sourceSlides.length; j++) {
+          Logger.log('  Appendendo slide ' + (j+1));
+          finalPresentation.appendSlide(sourceSlides[j]);
+          Utilities.sleep(2000); // Pausa tra slide
+        }
+        
+        sourcePresentation.saveAndClose();
+        finalPresentation.saveAndClose();
+        
+        Logger.log('  ✓ File ' + (i+1) + ' completato');
+        Utilities.sleep(3000); // Pausa tra file
+      }
+      
+      finalPresentation = SlidesApp.openById(finalPresentationId);
+      var finalCount = finalPresentation.getSlides().length;
+      finalPresentation.saveAndClose();
+      
+      Logger.log('✓ Unione completata - Totale slide: ' + finalCount);
+      
+    } catch (e) {
+      Logger.log('✗ ERRORE FASE 2: ' + e.toString());
+    }
+  } else {
+    Logger.log('=== FASE 2: SALTATA (editable !== SI) ===');
+  }
+  
+  // -------------------------
+  // FASE 3: EXPORT SU SHEET
+  // (un giorno alla volta)
+  // -------------------------
+  Logger.log('=== FASE 3: Export su Sheet ===');
+  
+  var exportIds = (finalPresentationId) ? [finalPresentationId] : presentationIds;
+  var lastRow = 2;
+  
+  exportIds.forEach((id, idx) => {
+    
+    Logger.log('Export presentazione ' + (idx + 1) + ' di ' + exportIds.length);
+    
+    var pres = SlidesApp.openById(id);
+    var slides = pres.getSlides();
+    
+    slides.forEach((slide, slideIdx) => {
+      
+      var url = 'https://docs.google.com/presentation/d/' +
+                id + '/export/png?pageid=' +
+                slide.getObjectId();
+      
+      try {
+        var blob = UrlFetchApp.fetch(url, {
+          headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+        }).getBlob();
+        
+        sheet.insertImage(blob, 1, lastRow);
+        lastRow += 53;
+        
+        Logger.log('  ✓ Slide ' + (slideIdx + 1) + ' esportata');
+        
+        // Pausa tra export
+        Utilities.sleep(1000);
+        
+      } catch (e) {
+        Logger.log('  ✗ Errore export slide: ' + e.toString());
+      }
+    });
+    
+    pres.saveAndClose();
+  });
+  
+  // -------------------------
+  // FASE 4: PULIZIA
+  // -------------------------
+  Logger.log('=== FASE 4: Pulizia file temporanei ===');
+  
+  presentationIds.forEach(id => {
+    try {
+      DriveApp.getFileById(id).setTrashed(true);
+    } catch (e) {
+      Logger.log('Errore eliminazione file: ' + e.toString());
+    }
+  });
+  
+  // Link finale
+  if (finalPresentationId) {
+    sheet.getRange('A1').setValue(translate('planPage.slideFileAlert'));
+    sheet.getRange('B1').setValue(
+      'https://docs.google.com/presentation/d/' +
+      finalPresentationId + '/edit'
+    );
+  }
+  
+  Logger.log('========================================');
+  Logger.log('✓ PROCESSO COMPLETATO');
+  Logger.log('========================================');
+}
+
+/**
+ * ==================================================
+ * FUNZIONE CORRETTA: viewEventsWithColorMap
+ * ==================================================
+ */
+function viewEventsWithColorMap(user, start, numberDays, method, presentationId, cosa, keyword, colorMap) {
+
+  Logger.log('>>> viewEventsWithColorMap chiamata <<<');
+  Logger.log('colorMap ricevuta: ' + JSON.stringify(colorMap));
+
+  var presentation = SlidesApp.openById(presentationId);
+  var slides = presentation.getSlides();
+  var numSlides = slides.length;
+  var transparency = setTransparency()[0][0];
+  
+  var colori2d = methodMcolors();
+  var structures = (cosa === 'cc') ? centroCongressi() : strutture();
+
+  var date = new Date(start);
+  var today = convertDateBar(new Date(date.getTime()));
+  
+  var nextDayDate = new Date(date.getTime());
+  nextDayDate.setDate(nextDayDate.getDate() + ((numberDays == 0) ? 1 : numberDays));
+  var toDate = convertDateBar(nextDayDate);
+
+  // Carica eventi
+  var eventi = events2Array(today, toDate, categories()[0][0], keyword);
+  
+  Logger.log('Eventi caricati: ' + eventi.length);
+
+  // ========================================
+  // APPLICAZIONE MAPPA COLORI - CON RIMOZIONE ULTIMA LETTERA
+  // ========================================
+  if (colorMap && Object.keys(colorMap).length > 0) {
+    Logger.log('🎨 Applicazione mappa colori personalizzata...');
+    
+    var applicati = 0;
+    
+    eventi.forEach(function(evt) {
+      // ========================================
+      // RIMUOVI ULTIMA LETTERA PRIMA DI CERCARE
+      // ========================================
+      const fullAcronym = evt[3]; // es: "CongressoPincoPallinoE"
+      const acronym = fullAcronym.slice(0, -1); // es: "CongressoPincoPallino"
+      // ========================================
+      
+      if (colorMap.hasOwnProperty(acronym)) {
+        var vecchioColore = evt[7];
+        var nuovoColore = parseInt(colorMap[acronym]);
+        
+        // SOVRASCRIVI evt[7] con il nuovo colore
+        evt[7] = nuovoColore;
+        
+        Logger.log('  ✓ Evento "' + fullAcronym + '" (chiave: "' + acronym + '"): ' + vecchioColore + ' → ' + nuovoColore);
+        applicati++;
+      } else {
+        Logger.log('  ⚠️ Evento "' + fullAcronym + '" (chiave: "' + acronym + '") non trovato nella mappa, uso colore attuale: ' + evt[7]);
+      }
+    });
+    
+    Logger.log('✓ Colori applicati: ' + applicati + ' su ' + eventi.length + ' eventi');
+  } else {
+    Logger.log('⚠️ NESSUNA mappa colori ricevuta o vuota!');
+  }
+  // ========================================
+
+  var pageDate = new Date(start);
+
+  // Rimuovi eventi che iniziano prima
+  var checkDate = new Date(+today.split('/')[2], today.split('/')[1] - 1, +today.split('/')[0]);
+  var t = 0;
+  while ((eventi.length > 1) && t < eventi.length && (eventi[t][0].getTime() < checkDate.getTime())) {
+    eventi.splice(t, 1);
+  }
+
+  var y = 0;
+  var j = 0;
+  var count = 0;
+
+  var filteredEvents = filterEvents(eventi);
+  
+  Logger.log('Filtered events: ' + filteredEvents.length);
+
+  // Loop giorni
+  for (let i = 0; i < numberDays; i += 1) {
+
+    var random = randomID(2);
+    CreateSlide(presentationId, i + numSlides, random, pageDate, 134, 9, method, cosa);
+
+    // MENU IN ALTO A SINISTRA
+    var w = 0;
+    while ((y < eventi.length) && (convertDate(eventi[y][0]) == convertDate(pageDate))) {
+      
+      // USA evt[7] che ora contiene il colore dalla mappa!
+      var colorIndex = eventi[y][7];
+      var statusIndex = selectHigh(eventi[y][7], eventi[y][1])[1];
+      
+      if (colorIndex >= colori2d.length) colorIndex = 0;
+      
+      var finalColor = colori2d[colorIndex][statusIndex];
+      
+      Logger.log('  Menu: evento[' + y + '] "' + eventi[y][3] + '" → colore ' + colorIndex + ' → ' + finalColor);
+
+      var widthBox, heightBox, xPos, yPos, spacing;
+      if (cosa === 'cc') {
+        widthBox = 55; heightBox = 15.0; xPos = 152; spacing = 16.25;
+      } else if (cosa === 'quartiereVecchio') {
+        widthBox = 200; heightBox = 6.0; xPos = 5; spacing = 7.25;
+      } else {
+        widthBox = 60; heightBox = 13.5; xPos = 1; spacing = 14.25;
+      }
+
+      CreateBoxText(
+        presentationId, 
+        i + numSlides, 
+        random, 
+        pageDate, 
+        'MENU', 
+        eventi[y][3], 
+        widthBox, heightBox, xPos, 15 + w,
+        finalColor,
+        '0', 
+        eventi[y][4], 
+        parseEventDetails(eventi[y][8]).descrizione, 
+        transparency, 
+        method, 
+        cosa
+      );
+
+      w = w + spacing;
+      count++;
+      y++;
+      
+      if (count > 40) {
+        Utilities.sleep(2000);
+        count = 0;
+      }
+    }
+
+    // STRUTTURE SULLA MAPPA
+    var presence = [];
+    const ccNotInMappa = ['GALL', 'EMPTY', 'foyerSG', 'foyerSMU', 'foyerSM', 'foyerMe1', 'foyerMe2', 'bistro', 'loggia', 'lobbyQ4', 'ufficiQ8', 'lbar'];
+
+    while ((j < filteredEvents.length) && (convertDate(filteredEvents[j][0]) == convertDate(pageDate))) {
+      if (filteredEvents[j][10].length > 0) {
+        for (let k = 0; k < filteredEvents[j][10].length; k += 1) {
+          
+          if (findKey(filteredEvents[j][10][k], structures, 0) >= 0) {
+            var riga = findKey(filteredEvents[j][10][k], structures, 0);
+            
+            var posX, posY;
+            var structName = filteredEvents[j][10][k];
+            var pIndex = findKey(structName, presence, 0);
+            
+            if (pIndex < 0) {
+              presence.push([structName, 0]);
+              posX = Number(structures[riga][3]);
+              posY = Number(structures[riga][4]);
+            } else {
+              presence[pIndex][1] = presence[pIndex][1] - 2;
+              var pos = presence[pIndex][1];
+              posX = Number(structures[riga][3]) + pos;
+              posY = Number(structures[riga][4]) + pos;
+            }
+
+            var width = Number(structures[riga][1]) * 1.0;
+            var height = Number(structures[riga][2]) * 1.0;
+
+            if (((cosa == 'quartiere') && (!ccNotInMappa.includes(structName))) || (cosa == 'cc')) {
+              if (width != 0) {
+                
+                var colorIndexStruct = filteredEvents[j][7];
+                var statusIndexStruct = selectHigh(filteredEvents[j][7], filteredEvents[j][1])[1];
+                if (colorIndexStruct >= colori2d.length) colorIndexStruct = 0;
+                var finalColorStruct = colori2d[colorIndexStruct][statusIndexStruct];
+
+                CreateBoxText(
+                  presentationId, 
+                  i + numSlides, 
+                  random, 
+                  pageDate, 
+                  structName, 
+                  filteredEvents[j][3], 
+                  width, height, posX, posY, 
+                  finalColorStruct,
+                  findImage(structures[riga][5], imageFinder(), selectedMode()), 
+                  filteredEvents[j][4], 
+                  filteredEvents[j][9], 
+                  transparency, 
+                  method, 
+                  cosa
+                );
+                count++;
+              }
+            }
+          }
+        }
+      }
+      j++;
+      
+      if (count > 40) {
+        Utilities.sleep(2000);
+        count = 0;
+      }
+    }
+
+    pageDate = new Date(pageDate.getTime() + 1 * 3600000 * 24);
+  }
+
+  Utilities.sleep(1000);
+  presentation.saveAndClose();
+  Utilities.sleep(1000);
+  
+  Logger.log('>>> viewEventsWithColorMap completata <<<');
+}
+
+/**
+ * Helper per formattare data nel nome file
+ */
+function formatDateForFilename(date) {
+  var year = date.getFullYear();
+  var month = ('0' + (date.getMonth() + 1)).slice(-2);
+  var day = ('0' + date.getDate()).slice(-2);
+  return year + '-' + month + '-' + day;
 }

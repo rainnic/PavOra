@@ -132,7 +132,7 @@ function showOldMonths(first, last, structures, keyword, period) {
 
     // Popola il foglio con i dati principali
     method2cKey(4, convertDateBar(firstDate[0]), convertDateBar(lastDate[0]), structures, keyword);
-    checkToday();
+    checkToday(sh);
 
     // Nasconde le colonne fuori dal range
     const lc = sh.getLastColumn();
@@ -304,7 +304,7 @@ function method2cKey(startingRow, fromDate, toDate, structures, keyword) {
   var numMesi = monthDiff(fromObject, toObject);
   // Initialise an array with 4 columns and with the number of months as rows
   var dispCal = makeArray(numMesi, 4);
-  for (var i = 0; i < numMesi; i += 1) {
+  for (let i = 0; i < numMesi; i += 1) {
     if (i == 0) {
       var nuovaData = new Date(fromObject.setMonth(fromObject.getMonth() + 0));
     } else {
@@ -369,7 +369,7 @@ function method2cKey(startingRow, fromDate, toDate, structures, keyword) {
   //
   // For loop to print every day of the period in the columns
   //
-  for (var i = 0; i < numDays; i += 1) {
+  for (let i = 0; i < numDays; i += 1) {
     //
     // HEADER
     //
