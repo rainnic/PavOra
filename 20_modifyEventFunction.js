@@ -1,13 +1,19 @@
 /*
-* Project Name: Pavora
-* Copyright (c) 2025 Nicola Rainiero
-*
-* This software is released under the MIT License.
-* Please refer to the LICENSE file for the full license text.
-*/
+ * Project Name: Pavora
+ * Copyright (c) 2025 Nicola Rainiero
+ *
+ * This software is released under the MIT License.
+ * Please refer to the LICENSE file for the full license text.
+ */
 function testShowFreeStructEdit() {
   //showFreeStructEdit('2024-07-30', '2024-08-10');
-  var matrice = findEventsByKeyword(myCalID()[0][0], 'EnBBJCna', '2024-09-29', '2024-10-25', '');
+  var matrice = findEventsByKeyword(
+    myCalID()[0][0],
+    "EnBBJCna",
+    "2024-09-29",
+    "2024-10-25",
+    ""
+  );
   //showFreeStructModifyEvent('2024-09-29', '2024-10-25', matrice, 'EnBBJCna');
 }
 
@@ -15,7 +21,14 @@ function testChangeTime() {
   //    -- 2024-08-26 -- 2024-09-20 -- xuvmrnfP -- 2024-08-23 -- 2024-09-22 -- 14,BPdx
   //  -- 2024-09-16 -- 2024-10-01 -- pbnpJDhK -- 2024-09-15 -- 2024-10-01 -- 7,G78,M,AC,ANP,PI,PN
   // changeTime(firstOriginal, lastOriginal, eventNameId, firstNew, lastNew, locationOriginal)
-  changeTime('2024-09-16', '2024-10-01', 'pbnpJDhK', '2024-09-16', '2024-10-01', '7,G78,8,M,AC,ANP,PI,PN')
+  changeTime(
+    "2024-09-16",
+    "2024-10-01",
+    "pbnpJDhK",
+    "2024-09-16",
+    "2024-10-01",
+    "7,G78,8,M,AC,ANP,PI,PN"
+  );
 }
 
 function testCopyNew() {
@@ -24,36 +37,53 @@ function testCopyNew() {
   //  -- 2024-09-16 -- 2024-10-01 -- pbnpJDhK -- 2024-09-15 -- 2024-10-01 -- 7,G78,M,AC,ANP,PI,PN
   // changeTime(firstOriginal, lastOriginal, eventNameId, firstNew, lastNew, locationOriginal)
   // copyEventNew
-  copyEventNew('2025-07-06', '2025-07-06', '5RIBZtlA', '2025-11-16', '2025-11-16', 'SMP,SM1,SM2,foyerSM,Cdx')
+  copyEventNew(
+    "2025-07-06",
+    "2025-07-06",
+    "5RIBZtlA",
+    "2025-11-16",
+    "2025-11-16",
+    "SMP,SM1,SM2,foyerSM,Cdx"
+  );
 }
 
 function showFreeStructEdit(first, last) {
   try {
     firstDate = text2monthDays(first);
     lastDate = text2monthDays(last);
-    var eventi = events2Array(convertDateBar(firstDate[1]), convertDateBar(lastDate[1]), categories()[0][0], "");
+    var eventi = events2Array(
+      convertDateBar(firstDate[1]),
+      convertDateBar(lastDate[1]),
+      categories()[0][0],
+      ""
+    );
     if (eventi.length != 0) {
       var usedLocations = [];
       var allStructures = strutture();
       for (let i = 0; i < eventi.length; i += 1) {
         if (!excludeAll()) {
-          const isOptionated = optionated().indexOf(eventi[i][8].substring(0, 4)) < 0;
-          if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
+          const isOptionated =
+            optionated().indexOf(eventi[i][8].substring(0, 4)) < 0;
+          if (
+            eventi[i][10].length != 0 &&
+            (includeOptionated() || isOptionated)
+          ) {
             loc2array = eventi[i][10]; // .split(",");
             for (let j = 0; j < loc2array.length; j += 1) {
               //usedLocations.push(loc2array[j]);
-              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
+              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime
               if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
                 //var relationship = allStructures[findKey(loc2array[j], allStructures, 0)][10].split(","); // strutture con un grado di parentela da string a array
-                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
+                var relationship =
+                  strutture()[
+                    findKey(String(loc2array[j]), strutture(), 0)
+                  ][10].split(","); // strutture con un grado di parentela da string a array
               }
               for (let k = 0; k < relationship.length; k += 1) {
                 //usedLocations.push(relationship[k]);
                 usedLocations.push(String(relationship[k]));
               }
-
             }
-
           }
         }
       }
@@ -78,20 +108,34 @@ function showFreeStructEdit(first, last) {
     ClearAll();
     var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     updateTimeUser();
-    showMonths(first, last, '');
+    showMonths(first, last, "");
     if (eventi.length != 0) {
-      sh.getRange(2, 1).setValue(translate('modifyEvent.usedStruct')).setFontSize(12);
-      sh.getRange(2, 1).setNote(usedLocations.filter(onlyUnique).toString()).setNumberFormat("@").setFontSize(10).setWrap(true);
+      sh.getRange(2, 1)
+        .setValue(translate("modifyEvent.usedStruct"))
+        .setFontSize(12);
+      sh.getRange(2, 1)
+        .setNote(usedLocations.filter(onlyUnique).toString())
+        .setNumberFormat("@")
+        .setFontSize(10)
+        .setWrap(true);
     } else {
-      sh.getRange(2, 1).setNote(translate('modifyEvent.usedStruct')).setFontSize(10).setWrap(true);
+      sh.getRange(2, 1)
+        .setNote(translate("modifyEvent.usedStruct"))
+        .setFontSize(10)
+        .setWrap(true);
     }
 
-    SpreadsheetApp.getUi()
-      .showSidebar(doGet(structures, '2A_modifyEventPage', translate('modifyEvent.editDelEvent')));
-
-
+    SpreadsheetApp.getUi().showSidebar(
+      doGet(
+        structures,
+        "2A_modifyEventPage",
+        translate("modifyEvent.editDelEvent")
+      )
+    );
   } catch (error) {
-    SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+    SpreadsheetApp.getUi().alert(
+      translate("alert.errorMessage") + " (" + error.message + ")"
+    );
   }
 }
 
@@ -102,7 +146,7 @@ function populateCategories(array, numberCategory) {
       result.push(array[i][0]);
     }
   }
-  return result
+  return result;
 }
 
 function categorizeLocation(location, array) {
@@ -117,7 +161,7 @@ function categorizeLocation(location, array) {
     // aree: ['AN']
     aree: populateCategories(array, 4),
     // parcheggi
-    parcheggi: populateCategories(array, 5)
+    parcheggi: populateCategories(array, 5),
   };
 
   // Inizializzazione delle variabili di categoria
@@ -128,7 +172,7 @@ function categorizeLocation(location, array) {
   let locationParcheggi = [];
 
   // Loop attraverso ogni elemento in location
-  location.forEach(loc => {
+  location.forEach((loc) => {
     if (categories.quartiere.includes(loc)) {
       locationQuartiere.push(loc);
     } else if (categories.congress.includes(loc)) {
@@ -148,7 +192,7 @@ function categorizeLocation(location, array) {
     locationCongress: locationCongress,
     locationIngressi: locationIngressi,
     locationAree: locationAree,
-    locationParcheggi: locationParcheggi
+    locationParcheggi: locationParcheggi,
   };
 }
 // USAGE:
@@ -164,15 +208,15 @@ function extractionDateTime(timeStamp) {
 
   // Estrazione dell'anno, mese e giorno per la prima variabile
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // I mesi in JavaScript sono 0-indexed, quindi aggiungiamo 1
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // I mesi in JavaScript sono 0-indexed, quindi aggiungiamo 1
+  const day = String(date.getDate()).padStart(2, "0");
 
   // Formattazione della prima variabile
   const formattedDate = `${year}-${month}-${day}`;
 
   // Estrazione delle ore e minuti per la seconda variabile
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
 
   // Formattazione della seconda variabile
   const formattedTime = `${hours}:${minutes}`;
@@ -180,7 +224,7 @@ function extractionDateTime(timeStamp) {
   // Restituisci un oggetto con le nuove variabili
   return {
     date: formattedDate,
-    time: formattedTime
+    time: formattedTime,
   };
 }
 //const dateString = 'Thu Jun 20 2024 08:00:00 GMT+0200 (Central European Summer Time)';
@@ -197,17 +241,15 @@ function findEventsByKeyword(calendarId, keyword, first, last, what) {
   // Inizializza una data iniziale molto antica
   var startDate, endDate;
 
-  if (what === 'hall' && first) {
+  if (what === "hall" && first) {
     startDate = new Date(first);
     startDate.setHours(0, 0, 0, 0);
     endDate = new Date(first);
     endDate.setHours(23, 59, 59, 999);
-
   } else if (!first) {
     const today = new Date();
     startDate = new Date(today.getFullYear() - 1, 0, 1);
     endDate = new Date(today.getFullYear() + 6, 0, 1);
-
   } else {
     const f = incrDay(new Date(first), -incrementDay() * 6);
     const l = incrDay(new Date(last), incrementDay() * 6);
@@ -220,7 +262,10 @@ function findEventsByKeyword(calendarId, keyword, first, last, what) {
   // Loop attraverso tutti gli eventi e controlla se contengono la parola chiave
   for (let i = 0; i < events.length; i++) {
     var event = events[i];
-    if ((event.getDescription().includes(keyword)) || (event.getTitle().includes(keyword))) {
+    if (
+      event.getDescription().includes(keyword) ||
+      event.getTitle().includes(keyword)
+    ) {
       matchingEvents.push(event);
     }
   }
@@ -229,22 +274,42 @@ function findEventsByKeyword(calendarId, keyword, first, last, what) {
   return matchingEvents;
 }
 
-function logMatchingEvents(calendarId, keyword, first, last, locationOriginal, what) {
-  var matchingEvents = findEventsByKeyword(calendarId, keyword.replace(/[\r\n]+/g, '').replace(/^\(.*?\)\s*/, ''), first, last, what);
+function logMatchingEvents(
+  calendarId,
+  keyword,
+  first,
+  last,
+  locationOriginal,
+  what
+) {
+  var matchingEvents = findEventsByKeyword(
+    calendarId,
+    keyword.replace(/[\r\n]+/g, "").replace(/^\(.*?\)\s*/, ""),
+    first,
+    last,
+    what
+  );
   // Log gli eventi trovati
   var eventsList = [];
   for (let i = 0; i < matchingEvents.length; i++) {
     var event = matchingEvents[i];
     type = parseEventString(event.getTitle()).type;
-    eventsList.push([event.getTitle(), event.getStartTime(), event.getEndTime(), event.getDescription(), fixLocationsEvents(event.getLocation()), type]);
+    eventsList.push([
+      event.getTitle(),
+      event.getStartTime(),
+      event.getEndTime(),
+      event.getDescription(),
+      fixLocationsEvents(event.getLocation()),
+      type,
+    ]);
   }
   // trovo le variabili che sono costanti per tutti gli eventi
   var data = strutture();
-  if ((findKey('E', eventsList, 5) >= 0) || (findKey('L', eventsList, 5) >= 0)) {
-    if (findKey('E', eventsList, 5) > -1) {
-      index = findKey('E', eventsList, 5);
+  if (findKey("E", eventsList, 5) >= 0 || findKey("L", eventsList, 5) >= 0) {
+    if (findKey("E", eventsList, 5) > -1) {
+      index = findKey("E", eventsList, 5);
     } else {
-      index = findKey('L', eventsList, 5);
+      index = findKey("L", eventsList, 5);
     }
     var name = parseEventString(eventsList[index][0]).nome;
     var opz = parseEventString(eventsList[index][0]).opz;
@@ -263,11 +328,14 @@ function logMatchingEvents(calendarId, keyword, first, last, locationOriginal, w
     var note = parseEventDetails(eventsList[index][3]).descrizione;
     var idEvent = parseEventDetails(eventsList[index][3]).id;
     if (locationOriginal) {
-      var location = '';
+      var location = "";
     } else {
       var location = eventsList[index][4];
     }
-    var categorizedLocations = categorizeLocation(eventsList[index][4].split(',').map(item => item.trim()), data);
+    var categorizedLocations = categorizeLocation(
+      eventsList[index][4].split(",").map((item) => item.trim()),
+      data
+    );
     var quartiere = categorizedLocations.locationQuartiere;
     var congress = categorizedLocations.locationCongress;
     var ingressi = categorizedLocations.locationIngressi;
@@ -291,7 +359,10 @@ function logMatchingEvents(calendarId, keyword, first, last, locationOriginal, w
     var org = parseEventDetails(eventsList[index][3]).org;
     var note = parseEventDetails(eventsList[index][3]).descrizione;
     var idEvent = parseEventDetails(eventsList[index][3]).id;
-    var categorizedLocations = categorizeLocation(eventsList[index][4].split(',').map(item => item.trim()), data);
+    var categorizedLocations = categorizeLocation(
+      eventsList[index][4].split(",").map((item) => item.trim()),
+      data
+    );
     var quartiere = categorizedLocations.locationQuartiere;
     var congress = categorizedLocations.locationCongress;
     var ingressi = categorizedLocations.locationIngressi;
@@ -306,33 +377,62 @@ function logMatchingEvents(calendarId, keyword, first, last, locationOriginal, w
     data = extractionDateTime(eventsList[i][1]).date;
     startTime = extractionDateTime(eventsList[i][1]).time;
     endTime = extractionDateTime(eventsList[i][2]).time;
-    finalList.push([name, opz, public, quartiere, congress, ingressi, aree, parcheggi, allestitore, vvf, cri, refCom, note, idEvent, type, data, startTime, endTime, eventsList[i][1], eventsList[i][2], location, refOp, org, typeEv, color, feed, code, opzExp]);
+    finalList.push([
+      name,
+      opz,
+      public,
+      quartiere,
+      congress,
+      ingressi,
+      aree,
+      parcheggi,
+      allestitore,
+      vvf,
+      cri,
+      refCom,
+      note,
+      idEvent,
+      type,
+      data,
+      startTime,
+      endTime,
+      eventsList[i][1],
+      eventsList[i][2],
+      location,
+      refOp,
+      org,
+      typeEv,
+      color,
+      feed,
+      code,
+      opzExp,
+    ]);
   }
-  return finalList
+  return finalList;
 }
 
 // transform title e description in variable
 function parseEventString(eventString) {
-  let opz = 'NO';
-  let nome = '';
-  let type = '';
+  let opz = "NO";
+  let nome = "";
+  let type = "";
 
   // Controlla se la stringa contiene "Opz."
-  if (eventString.startsWith('Opz.')) {
-    opz = 'SI';
+  if (eventString.startsWith("Opz.")) {
+    opz = "SI";
     // Rimuove "Opz. " dalla stringa
     eventString = eventString.slice(5);
   }
 
-  if (eventString.startsWith('Off.')) {
-    opz = 'OFF';
+  if (eventString.startsWith("Off.")) {
+    opz = "OFF";
     // Rimuove "Off. " dalla stringa
     eventString = eventString.slice(5);
   }
 
   // Usa un'espressione regolare per trovare la lettera maiuscola finale
   //let match = eventString.match(/^(.*)\s([A-Z])$/); // più rigororsa
-  let match = eventString.match(/^(.*?)\s([A-Z])$/);  // meno rigorosa --> PWC CONVENTION 2 opz.
+  let match = eventString.match(/^(.*?)\s([A-Z])$/); // meno rigorosa --> PWC CONVENTION 2 opz.
 
   if (match) {
     nome = match[1]; // Estrai il nome dell'evento
@@ -340,105 +440,133 @@ function parseEventString(eventString) {
   } else {
     // Nel caso in cui la stringa non corrisponda al formato atteso metti una 'E' per evento alla fine!
     nome = eventString;
-    type = 'E';
+    type = "E";
   }
 
   return {
     opz: opz,
     nome: nome,
-    type: type
+    type: type,
   };
 }
 
 // Extract description
 function parseEventDetails(eventString) {
-  let descrizione = '';
-  let all = '';
-  let feed = '';
-  let code = '';
-  let id = '';
-  let refCom = '';
-  let refOp = '';
-  let typeEv = '';
-  let open = '';
-  let vvf = '';
-  let cri = '';
-  let org = '';
-  let color = '';
-  let opzExp = '';
+  let descrizione = "";
+  let all = "";
+  let feed = "";
+  let code = "";
+  let id = "";
+  let refCom = "";
+  let refOp = "";
+  let typeEv = "";
+  let open = "";
+  let vvf = "";
+  let cri = "";
+  let org = "";
+  let color = "";
+  let opzExp = "";
 
   // Usa un'espressione regolare per trovare i parametri e le loro rispettive valori
   let typeEvMatch = eventString.match(/\btypeEv=([^\s]+)/);
   if (typeEvMatch) {
     typeEv = typeEvMatch[1]; // Estrai 'typeEv'
-  } else { typeEv = ''; }
+  } else {
+    typeEv = "";
+  }
 
   let descrizioneMatch = eventString.match(/^(.*?)\s(?=\w+=|$)/);
   if (descrizioneMatch) {
     descrizione = descrizioneMatch[1].trim(); // Estrai la descrizione
   } else if (eventString.match(/^(.*?\[.*?\])/)) {
     descrizione = eventString.match(/^(.*?\[.*?\])/)[1].trim(); // Estrai per le slide giornaliere
-  } else { descrizione = ''; }
+  } else {
+    descrizione = "";
+  }
 
   let allMatch = eventString.match(/\ball=([^\s]+)/);
   if (allMatch) {
     all = allMatch[1]; // Estrai 'all'
-  } else { all = ''; }
+  } else {
+    all = "";
+  }
 
   let feedMatch = eventString.match(/\bfeed=([^\s]+)/);
   if (feedMatch) {
     feed = feedMatch[1]; // Estrai 'all'
-  } else { feed = ''; }
+  } else {
+    feed = "";
+  }
 
   let codeMatch = eventString.match(/\bcode=([^\s]+)/);
   if (codeMatch) {
     code = codeMatch[1]; // Estrai 'all'
-  } else { code = ''; }
+  } else {
+    code = "";
+  }
 
   let idMatch = eventString.match(/\bid=([^\s]+)/);
   if (idMatch) {
     id = idMatch[1]; // Estrai 'id'
-  } else { id = ''; }
+  } else {
+    id = "";
+  }
 
   let orgMatch = eventString.match(/\borg=([^]+?)\srefCom=/); // /org=([^]+?)\srefCom=/;
   if (orgMatch) {
     org = orgMatch[1]; // Estrai 'org'
-  } else { org = ''; }
+  } else {
+    org = "";
+  }
 
   let refComMatch = eventString.match(/\brefCom=([^\s]+)/);
   if (refComMatch) {
     refCom = refComMatch[1]; // Estrai 'refCom'
-  } else { refCom = ''; }
+  } else {
+    refCom = "";
+  }
 
   let refOpMatch = eventString.match(/\brefOp=([^\s]+)/);
   if (refOpMatch) {
     refOp = refOpMatch[1]; // Estrai 'ref'
-  } else { refOp = ''; }
+  } else {
+    refOp = "";
+  }
 
   let openMatch = eventString.match(/\bopen=([^\s]+)/);
   if (openMatch) {
     open = openMatch[1]; // Estrai 'open'
-  } else { open = ''; }
+  } else {
+    open = "";
+  }
 
   let vvfMatch = eventString.match(/\bvvf=([^\s]+)/);
   if (vvfMatch) {
     vvf = vvfMatch[1]; // Estrai 'vvf'
-  } else { vvf = ''; }
+  } else {
+    vvf = "";
+  }
 
   let criMatch = eventString.match(/\bcri=([^\s]+)/);
   if (criMatch) {
     cri = criMatch[1]; // Estrai 'cri'
-  } else { cri = ''; }
+  } else {
+    cri = "";
+  }
 
   let colorMatch = eventString.match(/\bcolor=([^\s]+)/);
   if (colorMatch) {
     color = colorMatch[1]; // Estrai 'color'
-  } else { color = ''; }
+  } else {
+    color = "";
+  }
 
   let opzExpMatch = eventString.match(/\bopzExp=([^\s]+)/);
   if (opzExpMatch) {
     opzExp = opzExpMatch[1]; // Estrai 'color'
-  } else { opzExp = ''; }
+  } else {
+    opzExp = "";
+  }
 
   return {
     descrizione: descrizione,
@@ -454,7 +582,7 @@ function parseEventDetails(eventString) {
     vvf: vvf,
     cri: cri,
     color: color,
-    opzExp: opzExp
+    opzExp: opzExp,
   };
 }
 
@@ -464,60 +592,102 @@ const regexName = /idNome=(.+?)\s\(/; // Cattura il valore dopo "idNome=" e prim
 
 // Funzione di estrazione con regex
 function extractRegex(regex, string) {
-  if (!string) return ''; // Evita errori su stringhe vuote o non definite
+  if (!string) return ""; // Evita errori su stringhe vuote o non definite
 
   const match = string.match(regex);
-  return match ? match[1] : ''; // Ritorna il valore estratto o stringa vuota se non trova nulla
+  return match ? match[1] : ""; // Ritorna il valore estratto o stringa vuota se non trova nulla
 }
 
 function getCellNote(first, last, id) {
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var cell = sh.getActiveCell(); // Cella selezionata
-    var noteComplete = cell.getNote(); // Nota della cella selezionata
-    var note = id || ""; // Se ID è passato, lo usa direttamente
+    var cell = sh.getActiveCell();
+    var noteComplete = cell.getNote();
+    var note = id || "";
 
-    if (!note && noteComplete.length != 0) { // Se l'ID non è passato, lo estrae
-      note = ((extractRegex(regexId, noteComplete) != 0) ? extractRegex(regexId, noteComplete) : noteComplete.split("  ")[0]);
+    if (!note && noteComplete.length != 0) {
+      note =
+        extractRegex(regexId, noteComplete) != 0
+          ? extractRegex(regexId, noteComplete)
+          : noteComplete.split(" ")[0];
     }
 
     if (note) {
       sh.getRange(3, 1).setValue(note).setFontSize(10);
 
       var finalList;
-      if (id) {
-        // Se è stato passato un ID, usa un intervallo ampio di default
-        finalList = logMatchingEvents(myCalID()[0][0], note, '2020-01-01', '2040-12-31');
-      } else {
-        // Se l'ID è stato estratto, usa first e last
+      // CORRETTA: usa sempre first e last quando sono forniti
+      if (first && last) {
+        // Usa le date fornite dall'utente
         finalList = logMatchingEvents(myCalID()[0][0], note, first, last);
+      } else {
+        // Solo se first/last non sono forniti, usa l'intervallo ampio
+        finalList = logMatchingEvents(
+          myCalID()[0][0],
+          note,
+          "2020-01-01",
+          "2040-12-31"
+        );
       }
 
       // Converti le date di inizio e fine evento
       first = convertDateInputHtml(finalList[0][18]);
       last = convertDateInputHtml(finalList[finalList.length - 1][19]);
 
-      //Logger.log(JSON.stringify(finalList));
       showFreeStructModifyEvent(first, last, finalList, note);
     }
 
-    return note || translate('modifyEvent.emptyCell');
+    return note || translate("modifyEvent.emptyCell");
   } catch (error) {
-    SpreadsheetApp.getUi().alert(translate('modifyEvent.noEventDate') + ' (' + first + '-' + last + '). \n' + error);
-    return translate('modifyEvent.noEventDate');
+    SpreadsheetApp.getUi().alert(
+      translate("modifyEvent.noEventDate") +
+        " (" +
+        first +
+        "-" +
+        last +
+        "). \n" +
+        error
+    );
+    return translate("modifyEvent.noEventDate");
   }
 }
 
-function changeTime(firstOriginal, lastOriginal, eventNameId, firstNew, lastNew, locationOriginal) {
-  var finalList = logMatchingEvents(myCalID()[0][0], eventNameId, firstOriginal, lastOriginal, locationOriginal);
+function changeTime(
+  firstOriginal,
+  lastOriginal,
+  eventNameId,
+  firstNew,
+  lastNew,
+  locationOriginal
+) {
+  var finalList = logMatchingEvents(
+    myCalID()[0][0],
+    eventNameId,
+    firstOriginal,
+    lastOriginal,
+    locationOriginal
+  );
   first = convertDateInputHtml(finalList[0][18]);
   first = firstNew;
   last = lastNew;
   showFreeStructModifyEvent(first, last, finalList, eventNameId);
 }
 
-function copyEventNew(firstOriginal, lastOriginal, eventNameId, firstNew, lastNew, locationOriginal) {
-  var finalList = logMatchingEvents(myCalID()[0][0], eventNameId, firstOriginal, lastOriginal, locationOriginal);
+function copyEventNew(
+  firstOriginal,
+  lastOriginal,
+  eventNameId,
+  firstNew,
+  lastNew,
+  locationOriginal
+) {
+  var finalList = logMatchingEvents(
+    myCalID()[0][0],
+    eventNameId,
+    firstOriginal,
+    lastOriginal,
+    locationOriginal
+  );
   first = convertDateInputHtml(finalList[0][18]);
   first = firstNew;
   last = lastNew;
@@ -532,62 +702,95 @@ function copyEventNew(firstOriginal, lastOriginal, eventNameId, firstNew, lastNe
 // Function to showfreeStrruct and event to modify or delete
 function showFreeStructModifyEvent(first, last, array, eventNameId) {
   try {
-    firstDate = text2monthDays(first);
-    lastDate = text2monthDays(last);
-    if (eventNameId != undefined) {
-      var keyword = '-' + eventNameId;
-    } else {
-      var keyword = '';
-    }
-    var eventi = events2Array(convertDateBar(firstDate[1]), convertDateBar(lastDate[1]), categories()[0][0], keyword);
+    var firstDate = text2monthDays(first);
+    var lastDate = text2monthDays(last);
+
+    var keyword = eventNameId != undefined ? "-" + eventNameId : "";
+
+    var eventi = events2Array(
+      convertDateBar(firstDate[1]),
+      convertDateBar(lastDate[1]),
+      categories()[0][0],
+      keyword
+    );
+
+    // --- OTTIMIZZAZIONE DATI (CACHE) ---
+    // Carichiamo i dati UNA volta sola prima del ciclo
+    var allStructures = strutture(); // Cache strutture
+    var allOptionated = optionated(); // Cache optionated
+    var isExcludeAll = excludeAll(); // Cache excludeAll boolean
+    var isIncludeOptionated = includeOptionated(); // Cache includeOptionated boolean
+    // -----------------------------------
+
     if (eventi.length != 0) {
-      //Logger.log(eventi[0][10]);
-      var usedLocations = []
+      var usedLocations = [];
+
       for (let i = 0; i < eventi.length; i += 1) {
-        if (!excludeAll()) {
-          const isOptionated = optionated().indexOf(eventi[i][8].substring(0, 4)) < 0;
-          if (eventi[i][10].length != 0 && (includeOptionated() || isOptionated)) {
-            loc2array = eventi[i][10]; // .split(",");
+        if (!isExcludeAll) {
+          // Usa le variabili in cache invece di richiamare le funzioni
+          const isOptionated =
+            allOptionated.indexOf(eventi[i][8].substring(0, 4)) < 0;
+
+          if (
+            eventi[i][10].length != 0 &&
+            (isIncludeOptionated || isOptionated)
+          ) {
+            var loc2array = eventi[i][10];
+
             for (let j = 0; j < loc2array.length; j += 1) {
-              //usedLocations.push(loc2array[j]);
-              usedLocations.push(String(loc2array[j])); // .map(s => s.trim()) prime 
-              if (findKey(String(loc2array[j]), strutture(), 0) >= 0) {
-                //var relationship = strutture()[findKey(loc2array[j], strutture(), 0)][10].split(',').map(s => s.trim()); // strutture con un grado di parentela da string a array
-                var relationship = strutture()[findKey(String(loc2array[j]), strutture(), 0)][10].split(","); // strutture con un grado di parentela da string a array
-              }
-              for (let k = 0; k < relationship.length; k += 1) {
-                usedLocations.push(String(relationship[k]));
-              }
+              var currentLoc = String(loc2array[j]); // map trim rimosso come da tuo codice originale
+              usedLocations.push(currentLoc);
 
+              // Usa allStructures (cache) invece di richiamare strutture()
+              var structIndex = findKey(currentLoc, allStructures, 0);
+
+              if (structIndex >= 0) {
+                var relationship = allStructures[structIndex][10].split(",");
+                for (let k = 0; k < relationship.length; k += 1) {
+                  usedLocations.push(String(relationship[k]));
+                }
+              }
             }
-
           }
         }
       }
+
       var usedUnique = usedLocations.filter(onlyUnique);
-      //var usedUnique = usedUnique.filter(element => !array[0][20].includes(element));
       var colValue = array[0][20];
-      // Se colValue è null o vuoto, usa l'array alla posizione 4
+
       if (!colValue && Array.isArray(array[0][4])) {
         colValue = array[0][4].join(",");
       }
-      // Se colValue ora è una stringa valida, procedi con il filtro
+
       if (typeof colValue === "string") {
-        var colArray = colValue.split(",").map(s => s.trim());
-        usedUnique = usedUnique.filter(element => !colArray.includes(element));
+        var colArray = colValue.split(",").map((s) => s.trim());
+        usedUnique = usedUnique.filter(
+          (element) => !colArray.includes(element)
+        );
       } else {
-        Logger.log("Nessun valore valido per il filtro: colValue = " + colValue);
+        Logger.log(
+          "Nessun valore valido per il filtro: colValue = " + colValue
+        );
       }
-      var freeStructures = strutture();
+
+      // Clona allStructures per creare freeStructures senza rileggere il foglio
+      // Attenzione: slice() fa una copia shallow (spesso sufficiente per array 1D,
+      // ma se structures è 2D e modifichi gli interni usa JSON.parse/stringify o loop)
+      // Qui stiamo facendo splice sull'array esterno, quindi slice() va bene.
+      var freeStructures = allStructures.slice();
+
       for (let i = 0; i < usedUnique.length; i += 1) {
-        if (findKey(usedUnique[i], freeStructures, 0) >= 0) {
-          freeStructures.splice(findKey(usedUnique[i], freeStructures, 0), 1);
+        var idxToRemove = findKey(usedUnique[i], freeStructures, 0);
+        if (idxToRemove >= 0) {
+          freeStructures.splice(idxToRemove, 1);
         }
       }
       var structures = onlyStrcturesSelect(freeStructures);
     } else {
-      var freeStructures = strutture();
-      var structures = onlyStrcturesSelect(freeStructures);
+      // Nessun evento trovato, tutte le strutture sono libere
+      // Ricarico strutture() o uso la cache se non è stata modificata
+      // Qui meglio usare una copia pulita dalla cache
+      var structures = onlyStrcturesSelect(allStructures || strutture());
     }
 
     createUserSheet();
@@ -600,32 +803,22 @@ function showFreeStructModifyEvent(first, last, array, eventNameId) {
     structures.unshift(refOp());
     structures.unshift(typeEv());
 
-    /*
-        SpreadsheetApp.getUi()
-          .showSidebar(doGet(structures, '2B_modifyEventPage', translate('modifyEvent.editDelEvent')));
-          */
-          
-    // chiamata alla dialog
-    var htmlOutput = doGet(structures, '2B_modifyEventPage', translate('modifyEvent.editDelEvent'));
+    // Chiamata alla dialog
+    var htmlOutput = doGet(
+      structures,
+      "2B_modifyEventPage",
+      translate("modifyEvent.editDelEvent")
+    );
+    htmlOutput.setWidth(800).setHeight(600);
+    var dialogTitle = translate("modifyEvent.editDelEvent");
+    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);
 
-    // 2. Imposto le dimensioni del dialogo. (Manteniamo 800x600 per consistenza).
-    htmlOutput
-      .setWidth(800)
-      .setHeight(600);
-
-    // 3. Estraggo il titolo del dialogo dal parametro usato nella chiamata doGet.
-    var dialogTitle = translate('modifyEvent.editDelEvent');
-
-    // 4. Mostro la finestra di dialogo modale.
-    SpreadsheetApp.getUi().showModelessDialog(htmlOutput, dialogTitle);  //showModelessDialog oppure showModalDialog
-    // fine chiamata alla dialog
     updateTimeUser();
-
   } catch (error) {
-    // Mostra un messaggio tramite ui.alert
-    SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+    SpreadsheetApp.getUi().alert(
+      translate("alert.errorMessage") + " (" + error.message + ")"
+    );
   }
-
 }
 
 // Delete events with confirmation
@@ -633,54 +826,68 @@ function deleteEvents(eventId, first, last, what, activeRow) {
   try {
     createUserSheet();
     updateTimeUser();
-    
+
     const ui = SpreadsheetApp.getUi();
     const sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
-    
+
     // Trova gli eventi da cancellare
-    const eventi = findEventsByKeyword(myCalID()[0][0], eventId, first, last, what);
-    
+    const eventi = findEventsByKeyword(
+      myCalID()[0][0],
+      eventId,
+      first,
+      last,
+      what
+    );
+
     // Costruisci il messaggio di conferma con la lista degli eventi
-    let testo = translate('modifyEvent.warEventDel', { eventId: eventId });
+    let testo = translate("modifyEvent.warEventDel", { eventId: eventId });
     const matrice = [];
-    
+
     for (let i = 0; i < eventi.length; i += 1) {
-      testo += eventi[i].getTitle() + '\t | \t' + convertDate(eventi[i].getStartTime()) + '\n';
+      testo +=
+        eventi[i].getTitle() +
+        "\t | \t" +
+        convertDate(eventi[i].getStartTime()) +
+        "\n";
       matrice.push([
         eventi[i].getTitle(),
         eventi[i].getStartTime(),
         eventi[i].getEndTime(),
         eventi[i].getDescription(),
-        eventi[i].getLocation()
+        eventi[i].getLocation(),
       ]);
     }
-    
+
     // Chiedi conferma all'utente
-    const response = ui.alert(translate('modifyEvent.confirmYN'), testo, ui.ButtonSet.YES_NO);
-    
+    const response = ui.alert(
+      translate("modifyEvent.confirmYN"),
+      testo,
+      ui.ButtonSet.YES_NO
+    );
+
     // ========== GESTIONE RISPOSTA UTENTE ==========
-    
+
     // Caso 1: Utente ha detto NO -> Esci senza fare nulla
     if (response !== ui.Button.YES) {
-      ui.alert(translate('modifyEvent.delNOMessage'));
+      ui.alert(translate("modifyEvent.delNOMessage"));
       return {
         success: false,
-        reason: 'USER_CANCELLED'
+        reason: "USER_CANCELLED",
       };
     }
-    
+
     // Caso 2: Utente ha detto YES ma non ha permessi
     if (!checkUserWritePermission(myCalID()[0][0])) {
-      ui.alert(translate('modifyEvent.waitSomeTime'));
+      ui.alert(translate("modifyEvent.waitSomeTime"));
       return {
         success: false,
-        reason: 'NO_PERMISSION'
+        reason: "NO_PERMISSION",
       };
     }
-    
+
     // Caso 3: Utente ha detto YES e ha i permessi -> Procedi con la cancellazione
-    
+
     // Cancella gli eventi
     for (let i = 0; i < eventi.length; i += 1) {
       const event = calendar.getEventById(eventi[i].getId());
@@ -688,52 +895,76 @@ function deleteEvents(eventId, first, last, what, activeRow) {
         event.deleteEvent();
       }
     }
-    
+
     // Log della cancellazione
     const oggi = new Date();
     const utenteEmail = Session.getEffectiveUser().getEmail();
-    const eventID = (parseEventDetails(matrice[0][3]).id !== '') 
-      ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome 
-      : parseEventString(matrice[0][0]).nome;
-    
+    const eventID =
+      parseEventDetails(matrice[0][3]).id !== ""
+        ? parseEventDetails(matrice[0][3]).id +
+          " |-> " +
+          parseEventString(matrice[0][0]).nome
+        : parseEventString(matrice[0][0]).nome;
+
     // Gestione post-cancellazione in base al contesto
-    if (typeof what !== 'undefined') {
-      if (what === 'hall') {
+    if (typeof what !== "undefined") {
+      if (what === "hall") {
         // Cancellazione da vista sale
-        addLogRevision(oggi, translate('modifyEvent.delRoomsOK'), eventID, utenteEmail, matrice);
-        createDailyScheduleFromCalendar(first, 60, '');
+        addLogRevision(
+          oggi,
+          translate("modifyEvent.delRoomsOK"),
+          eventID,
+          utenteEmail,
+          matrice
+        );
+        createDailyScheduleFromCalendar(first, 60, "");
         specialDailyEvent();
-      } else if (typeof activeRow !== 'undefined') {
+      } else if (typeof activeRow !== "undefined") {
         // Cancellazione da lista eventi
-        addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
-        
+        addLogRevision(
+          oggi,
+          translate("modifyEvent.delOK"),
+          eventID,
+          utenteEmail,
+          matrice
+        );
+
         // Marca la riga come cancellata
         const numColumns = sh.getLastColumn();
-        const rowValues = Array(numColumns).fill(translate('modifyEvent.delOK'));
+        const rowValues = Array(numColumns).fill(
+          translate("modifyEvent.delOK")
+        );
         sh.getRange(activeRow, 1, 1, numColumns).setValues([rowValues]);
       }
     } else {
       // Cancellazione da calendario generale
-      addLogRevision(oggi, translate('modifyEvent.delOK'), eventID, utenteEmail, matrice);
+      addLogRevision(
+        oggi,
+        translate("modifyEvent.delOK"),
+        eventID,
+        utenteEmail,
+        matrice
+      );
       const prefs = getUserBrowserSettings();
       showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
     }
-    
-    ui.alert(translate('modifyEvent.delOKMessage'));
-    
+
+    ui.alert(translate("modifyEvent.delOKMessage"));
+
     // Cancellazione avvenuta con successo
     return {
       success: true,
       eventId: eventID,
-      deletedCount: eventi.length
+      deletedCount: eventi.length,
     };
-    
   } catch (error) {
-    SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
+    SpreadsheetApp.getUi().alert(
+      translate("alert.errorMessage") + " (" + error.message + ")"
+    );
     return {
       success: false,
-      reason: 'ERROR',
-      error: error.message
+      reason: "ERROR",
+      error: error.message,
     };
   }
 }
@@ -745,17 +976,35 @@ function deleteEventsNoConfirm(eventId, first, last, what) {
   var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
   var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var eventi = findEventsByKeyword(myCalID()[0][0], eventId, first, last, what);
-  var testo = '';
+  var testo = "";
   var matrice = [];
   for (let i = 0; i < eventi.length; i += 1) {
-    testo = testo + eventi[i].getTitle() + '\t' + convertDate(eventi[i].getStartTime()) + '\n';
-    matrice.push([eventi[i].getTitle(), eventi[i].getStartTime(), eventi[i].getEndTime(), eventi[i].getLocation(), eventi[i].getDescription()]);
+    testo =
+      testo +
+      eventi[i].getTitle() +
+      "\t" +
+      convertDate(eventi[i].getStartTime()) +
+      "\n";
+    matrice.push([
+      eventi[i].getTitle(),
+      eventi[i].getStartTime(),
+      eventi[i].getEndTime(),
+      eventi[i].getLocation(),
+      eventi[i].getDescription(),
+    ]);
   }
   var calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
-  var response = ui.alert(translate('modifyEvent.confModTitle'), testo, ui.ButtonSet.YES_NO);
+  var response = ui.alert(
+    translate("modifyEvent.confModTitle"),
+    testo,
+    ui.ButtonSet.YES_NO
+  );
 
   // Gestisci la risposta dell'utente
-  if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == true)) {
+  if (
+    response == ui.Button.YES &&
+    checkUserWritePermission(myCalID()[0][0]) == true
+  ) {
     for (let i = 0; i < eventi.length; i += 1) {
       var event = calendar.getEventById(eventi[i].getId());
       if (event) {
@@ -767,20 +1016,33 @@ function deleteEventsNoConfirm(eventId, first, last, what) {
     }
     oggi = new Date();
     utenteEmail = Session.getEffectiveUser().getEmail();
-    var eventID = (parseEventDetails(matrice[0][3]).id != '') ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome : parseEventString(matrice[0][0]).nome;
+    var eventID =
+      parseEventDetails(matrice[0][3]).id != ""
+        ? parseEventDetails(matrice[0][3]).id +
+          " |-> " +
+          parseEventString(matrice[0][0]).nome
+        : parseEventString(matrice[0][0]).nome;
     //addLogRevision(oggi, "ADMIN NUOVO", eventID, utenteEmail, matrix);
-    addLogRevision(oggi, translate('modifyEvent.logCancMod'), eventID, utenteEmail, matrice);
-  } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
-    ui.alert(translate('modifyEvent.waitSomeTime'));
+    addLogRevision(
+      oggi,
+      translate("modifyEvent.logCancMod"),
+      eventID,
+      utenteEmail,
+      matrice
+    );
+  } else if (
+    response == ui.Button.YES &&
+    checkUserWritePermission(myCalID()[0][0]) == false
+  ) {
+    ui.alert(translate("modifyEvent.waitSomeTime"));
   } else {
-    ui.alert(translate('modifyEvent.opNOMessage'));
+    ui.alert(translate("modifyEvent.opNOMessage"));
   }
   //showMonths(first, last, eventi[0].getLocation());
   //viewCalendar(); // to refresh dialog window
   //ui.alert('Eventi cancellati con successo.');
-  //} 
+  //}
 }
-
 
 // Delete events and then modify them
 function deleteThenModifyEvents(eventID, first, last, outputEvents, what) {
@@ -789,20 +1051,44 @@ function deleteThenModifyEvents(eventID, first, last, outputEvents, what) {
     updateTimeUser();
     var ui = SpreadsheetApp.getUi(); // Se utilizzi Documenti Google, usa DocumentApp.getUi()
     var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var eventi = findEventsByKeyword(myCalID()[0][0], eventID, first, last, what);
+    var eventi = findEventsByKeyword(
+      myCalID()[0][0],
+      eventID,
+      first,
+      last,
+      what
+    );
     var matrice = [];
-    var testo = '';
+    var testo = "";
     for (let i = 0; i < eventi.length; i += 1) {
-      testo = testo + eventi[i].getTitle() + '\t' + convertDate(eventi[i].getStartTime()) + '\n';
-      matrice.push([eventi[i].getTitle(), eventi[i].getStartTime(), eventi[i].getEndTime(), eventi[i].getDescription(), eventi[i].getLocation()]);
+      testo =
+        testo +
+        eventi[i].getTitle() +
+        "\t" +
+        convertDate(eventi[i].getStartTime()) +
+        "\n";
+      matrice.push([
+        eventi[i].getTitle(),
+        eventi[i].getStartTime(),
+        eventi[i].getEndTime(),
+        eventi[i].getDescription(),
+        eventi[i].getLocation(),
+      ]);
     }
     //sh.setActiveRange(sh.getRange('A1'));
     var calendar = CalendarApp.getCalendarById(myCalID()[0][0]);
-    var response = ui.alert(translate('modifyEvent.confModTitle'), testo, ui.ButtonSet.YES_NO);
+    var response = ui.alert(
+      translate("modifyEvent.confModTitle"),
+      testo,
+      ui.ButtonSet.YES_NO
+    );
     //var response = ui.alert('Conferma Cancellazione', testo, ui.ButtonSet.YES_NO);
 
     // Gestisci la risposta dell'utente
-    if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == true)) {
+    if (
+      response == ui.Button.YES &&
+      checkUserWritePermission(myCalID()[0][0]) == true
+    ) {
       //cancellaEventi(eventi);
       // Itera su ciascun ID evento e prova a cancellarlo
       if (eventi.length > 0) {
@@ -819,65 +1105,84 @@ function deleteThenModifyEvents(eventID, first, last, outputEvents, what) {
       oggi = new Date();
       utenteEmail = Session.getEffectiveUser().getEmail();
       if (matrice.length != 0) {
-        var eventID = (parseEventDetails(matrice[0][3]).id != '') ? parseEventDetails(matrice[0][3]).id + ' |-> ' + parseEventString(matrice[0][0]).nome : parseEventString(matrice[0][0]).nome;
+        var eventID =
+          parseEventDetails(matrice[0][3]).id != ""
+            ? parseEventDetails(matrice[0][3]).id +
+              " |-> " +
+              parseEventString(matrice[0][0]).nome
+            : parseEventString(matrice[0][0]).nome;
         //addLogRevision(oggi, "ADMIN NUOVO", eventID, utenteEmail, matrix);
       } else {
-        var eventID = 'ERROR';
+        var eventID = "ERROR";
       }
 
-      if (typeof what !== 'undefined') {
-        if (what == 'hall') {
-          addLogRevision(oggi, translate('modifyEvent.logCancModOne'), eventID, utenteEmail, matrice);
+      if (typeof what !== "undefined") {
+        if (what == "hall") {
+          addLogRevision(
+            oggi,
+            translate("modifyEvent.logCancModOne"),
+            eventID,
+            utenteEmail,
+            matrice
+          );
           modifyEvents(first, last, outputEvents, what);
-return {
-  success: true
-};          
+          return {
+            success: true,
+          };
         }
       } else {
-        addLogRevision(oggi, translate('modifyEvent.logCancMod'), eventID, utenteEmail, matrice);
+        addLogRevision(
+          oggi,
+          translate("modifyEvent.logCancMod"),
+          eventID,
+          utenteEmail,
+          matrice
+        );
         modifyEvents(first, last, outputEvents);
-return {
-  success: true
-};        
+        return {
+          success: true,
+        };
       }
-    } else if ((response == ui.Button.YES) && (checkUserWritePermission(myCalID()[0][0]) == false)) {
-      ui.alert(translate('modifyEvent.waitSomeTime'));
-  return {
-    success: false,
-    reason: 'WAIT'
-  };      
+    } else if (
+      response == ui.Button.YES &&
+      checkUserWritePermission(myCalID()[0][0]) == false
+    ) {
+      ui.alert(translate("modifyEvent.waitSomeTime"));
+      return {
+        success: false,
+        reason: "WAIT",
+      };
     } else {
-      ui.alert(translate('modifyEvent.opNOMessage'));
-  return {
-    success: false,
-    reason: 'No message'
-  };      
+      ui.alert(translate("modifyEvent.opNOMessage"));
+      return {
+        success: false,
+        reason: "No message",
+      };
     }
-
-
   } catch (error) {
     // Mostra un messaggio tramite ui.alert
-    SpreadsheetApp.getUi().alert(translate('alert.errorMessage') + ' (' + error.message + ')');
-  return {
-    success: false,
-    reason: 'ERROR'
-  };
+    SpreadsheetApp.getUi().alert(
+      translate("alert.errorMessage") + " (" + error.message + ")"
+    );
+    return {
+      success: false,
+      reason: "ERROR",
+    };
   }
 }
-
 
 // Modify events!
 function modifyEvents(first, last, array, what, activeRow) {
   createUserSheet();
-  if (typeof activeRow == 'undefined') {
+  if (typeof activeRow == "undefined") {
   }
   updateTimeUser();
   var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var matrix = stringToMatrix(array, 8)
-  var mycalID = myCalID()[0][0];             // ID of the first calendar
+  var matrix = stringToMatrix(array, 8);
+  var mycalID = myCalID()[0][0]; // ID of the first calendar
   array2Events(matrix, mycalID);
-  if (typeof activeRow == 'undefined') {
-    if (findKey('E', matrix, 5) >= 0) {
+  if (typeof activeRow == "undefined") {
+    if (findKey("E", matrix, 5) >= 0) {
       //showMonths(first, last, matrix[findKey('E', matrix, 5)][4]);
       const prefs = getUserBrowserSettings();
       showMonths(prefs.first, prefs.last, prefs.selectedStruct, prefs.keyword);
@@ -889,15 +1194,26 @@ function modifyEvents(first, last, array, what, activeRow) {
   }
   oggi = new Date();
   utenteEmail = Session.getEffectiveUser().getEmail();
-  var eventID = (parseEventDetails(matrix[0][3]).id != '') ? parseEventDetails(matrix[0][3]).id + ' |-> ' + parseEventString(matrix[0][0]).nome : parseEventString(matrix[0][0]).nome;
-  //addLogRevision(oggi, "ADMIN NUOVO", eventID, utenteEmail, matrix);  
-  addLogRevision(oggi, translate('modifyEvent.logEditMod'), eventID, utenteEmail, matrix);
-  if (typeof what !== 'undefined') {
-    if (what == 'hall') {
+  var eventID =
+    parseEventDetails(matrix[0][3]).id != ""
+      ? parseEventDetails(matrix[0][3]).id +
+        " |-> " +
+        parseEventString(matrix[0][0]).nome
+      : parseEventString(matrix[0][0]).nome;
+  //addLogRevision(oggi, "ADMIN NUOVO", eventID, utenteEmail, matrix);
+  addLogRevision(
+    oggi,
+    translate("modifyEvent.logEditMod"),
+    eventID,
+    utenteEmail,
+    matrix
+  );
+  if (typeof what !== "undefined") {
+    if (what == "hall") {
       //manageSmallRoom();
-      createDailyScheduleFromCalendar(first, 60, '', '', 'H24');
+      createDailyScheduleFromCalendar(first, 60, "", "", "H24");
     }
-  } else if (what == 'updateDetailsEvent') {
+  } else if (what == "updateDetailsEvent") {
     // do nothing
   } else {
     //viewCalendar(); // to refresh dialog window
