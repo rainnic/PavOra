@@ -420,12 +420,19 @@
             button.disabled = true;
             button.innerText = translate('viewCalendarPage.waitTr');
 
-            setTimeout(() => {
-                button.disabled = false;
-                button.innerText = translate('viewList.upSpec');
-            }, 20000);
-
-            google.script.run.specialUpdateEvent(first, last);
+            // Usa withSuccessHandler per riabilitare il bottone quando finisce
+            google.script.run
+                .withSuccessHandler(function () {
+                    button.disabled = false;
+                    button.innerText = translate('viewList.upSpec');
+                })
+                .withFailureHandler(function (error) {
+                    button.disabled = false;
+                    button.innerText = translate('viewList.upSpec');
+                    console.error('Errore:', error);
+                    // Opzionale: mostra un messaggio di errore all'utente
+                })
+                .specialUpdateEvent(first, last);
         }
 
         /**
@@ -1142,66 +1149,66 @@
             google.script.run.getCellListNote('deleteEvent', startDate, finishDate);
         }
         */
-function loadNote(what) {
+        function loadNote(what) {
 
-  const first = document.getElementById('vl-startDate').value;
-  const last  = document.getElementById('vl-finishDate').value;
+            const first = document.getElementById('vl-startDate').value;
+            const last = document.getElementById('vl-finishDate').value;
 
-  google.script.run
-    .withSuccessHandler(function(note) {
+            google.script.run
+                .withSuccessHandler(function (note) {
 
-      if (!note) {
-        //alert(translate('viewList.noNoteFound'));
-        return;
-      }
+                    if (!note) {
+                        //alert(translate('viewList.noNoteFound'));
+                        return;
+                    }
 
-      console.log('Nota ricevuta:', note);
+                    console.log('Nota ricevuta:', note);
 
-      // 👉 QUI TORNA LA LOGICA DI PRIMA
-      switch (what) {
+                    // 👉 QUI TORNA LA LOGICA DI PRIMA
+                    switch (what) {
 
-        case 'updateDetailsEvent':
-          handleUpdateDetails(note);
-          break;
+                        case 'updateDetailsEvent':
+                            handleUpdateDetails(note);
+                            break;
 
-        case 'updateSpecificEvent':
-          handleUpdateSpecific(note);
-          break;
+                        case 'updateSpecificEvent':
+                            handleUpdateSpecific(note);
+                            break;
 
-        case 'deleteEvent':
-          handleDeleteEvent(note);
-          break;
-      }
+                        case 'deleteEvent':
+                            handleDeleteEvent(note);
+                            break;
+                    }
 
-    })
-    .getCellListNote(what, first, last);
-}
+                })
+                .getCellListNote(what, first, last);
+        }
 
-function updateDetailsEvent() {
-  disableButton('vl-aggiornaDet', 'viewList.upGeneral');
-  loadNote('updateDetailsEvent');
-}
+        function updateDetailsEvent() {
+            disableButton('vl-aggiornaDet', 'viewList.upGeneral');
+            loadNote('updateDetailsEvent');
+        }
 
-function updateSpecificEvent() {
-  disableButton('vl-aggiornaSpec', 'viewList.upSpec');
-  loadNote('updateSpecificEvent');
-}
+        function updateSpecificEvent() {
+            disableButton('vl-aggiornaSpec', 'viewList.upSpec');
+            loadNote('updateSpecificEvent');
+        }
 
-function deleteEvent() {
-  disableButton('vl-cancella', 'viewList.delEvent');
-  loadNote('deleteEvent');
-}
+        function deleteEvent() {
+            disableButton('vl-cancella', 'viewList.delEvent');
+            loadNote('deleteEvent');
+        }
 
-function disableButton(id, labelKey) {
-  const btn = document.getElementById(id);
-  btn.disabled = true;
-  btn.innerText = translate('viewCalendarPage.waitTr');
+        function disableButton(id, labelKey) {
+            const btn = document.getElementById(id);
+            btn.disabled = true;
+            btn.innerText = translate('viewCalendarPage.waitTr');
 
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.innerText = translate(labelKey);
-  }, 20000);
-}
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerText = translate(labelKey);
+            }, 20000);
+        }
 
 
         // Reset form functions
@@ -1691,256 +1698,264 @@ function disableButton(id, labelKey) {
         </div>
     </div>
 
-<!-- VIEW PLAN SECTION (MIGLIORATA) -->
-<div id="viewDailyPlan-section" class="section">
-    <h6 class="align">
-        <?= translate('sidebar.showPlanEvent') ?>
-    </h6>
-    
-    <!-- STEP 1: CONFIGURAZIONE BASE -->
-    <form id="vdp-form-step1">
-        <details open>
-            <summary><?= translate('planPage.step1Config') || 'Step 1: Configurazione Base' ?></summary>
-            
-            <div class="row mb-3">
-                <label for="vdp-startDate" class="col-sm-12 col-form-label">
-                    <?= translate('viewCalendarPage.startDateTr') ?>
-                </label>
-                <div class="col-sm-10">
-                    <input required type="date" class="form-control form-control-lg" id="vdp-startDate">
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <label for="vdp-finishDate" class="col-sm-12 col-form-label">
-                    <?= translate('viewCalendarPage.endDateTr') ?>
-                </label>
-                <div class="col-sm-10">
-                    <input required type="date" class="form-control form-control-lg" id="vdp-finishDate">
-                </div>
-            </div>
+    <!-- VIEW PLAN SECTION (MIGLIORATA) -->
+    <div id="viewDailyPlan-section" class="section">
+        <h6 class="align">
+            <?= translate('sidebar.showPlanEvent') ?>
+        </h6>
 
-            <div class="row mb-3">
-                <label for="cosa" class="col-sm-12 col-form-label">
-                    <?= translate('planPage.whatView') ?>
-                </label>
-                <div class="col-sm-10">
-                    <select required class="form-control form-control-lg" name="cosa" id="vdp-cosa">
-                        <option disabled selected value>
-                            <?= translate('addEventPage.chooseList') ?>
-                        </option>
-                        <option value='cc'>
-                            <?= translate('addEventPage.selCcenter') ?>
-                        </option>
-                        <option value='quartiere'>
-                            <?= translate('addEventPage.selQcenter') ?>
-                        </option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <label class="col-sm-12 col-form-label">
-                    <?= translate('viewCalendarPage.findWordTr') ?>
-                </label>
-                <div class="col-sm-10">
-                    <input type="text" class="form-control form-control-sm" id="vdp-keyword"
-                        placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
-                </div>
-            </div>
+        <!-- STEP 1: CONFIGURAZIONE BASE -->
+        <form id="vdp-form-step1">
+            <details open>
+                <summary>
+                    <?= translate('planPage.step1Config') || 'Step 1: Configurazione Base' ?>
+                </summary>
 
-            <div class="row mb-3">
-                <label for="editable" class="col-sm-12 col-form-label">
-                    <?= translate('planPage.editSlide') ?>
-                </label>
-                <div class="col-sm-10">
-                    <select class="form-control form-control-lg" name="editable" id="vdp-editable">
-                        <option selected value='NO'>NO</option>
-                        <option value='SI'>
-                            <?= translate('addEventPage.chooseYes') ?>
-                        </option>
-                    </select>
+                <div class="row mb-3">
+                    <label for="vdp-startDate" class="col-sm-12 col-form-label">
+                        <?= translate('viewCalendarPage.startDateTr') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <input required type="date" class="form-control form-control-lg" id="vdp-startDate">
+                    </div>
                 </div>
-            </div>
-            
-            <div class="button-container">
-                <button type="button" id="vdp-loadEventsBtn" onclick="loadEventsForColorAssignment()">
-                    <?= translate('planPage.loadEvents') || '🔍 Carica Eventi' ?>
-                </button>
-            </div>
-        </details>
-    </form>
 
-    <!-- STEP 2: ASSEGNAZIONE COLORI -->
-    <form id="vdp-form-step2" style="display: none;">
-        <details open>
-            <summary><?= translate('planPage.step2Colors') || 'Step 2: Assegna Colori' ?></summary>
-            
-            <div id="vdp-colorAssignment" style="margin: 15px 0;">
-                <!-- Qui verrà caricata la tabella eventi -->
-            </div>
-            
-            <div class="button-container">
-                <button type="button" onclick="saveColorAssignments()">
-                    <?= translate('planPage.saveColors') || '💾 Salva Colori' ?>
-                </button>
-                <button type="button" onclick="resetColorAssignments()">
-                    <?= translate('planPage.resetColors') || '🔄 Reset' ?>
-                </button>
-            </div>
-        </details>
-    </form>
-
-    <!-- STEP 3: GENERAZIONE -->
-    <form id="vdp-form-step3" style="display: none;">
-        <details open>
-            <summary><?= translate('planPage.step3Generate') || 'Step 3: Genera Slide' ?></summary>
-            
-            <div id="vdp-progress" style="margin: 15px 0; display: none;">
-                <p><strong id="vdp-progressText">Generazione in corso...</strong></p>
-                <div style="width: 100%; background: #ddd; height: 20px; border-radius: 10px;">
-                    <div id="vdp-progressBar" style="width: 0%; background: #4CAF50; height: 100%; border-radius: 10px; transition: width 0.3s;"></div>
+                <div class="row mb-3">
+                    <label for="vdp-finishDate" class="col-sm-12 col-form-label">
+                        <?= translate('viewCalendarPage.endDateTr') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <input required type="date" class="form-control form-control-lg" id="vdp-finishDate">
+                    </div>
                 </div>
-            </div>
-            
-            <div class="button-container">
-                <button type="button" id="vdp-generateBtn" onclick="generateSlidesWithColors()">
-                    <?= translate('planPage.startGeneration') || '🚀 Genera Slide' ?>
-                </button>
-                <button type="button" onclick="resetVDPForm()">
-                    <?= translate('viewCalendarPage.delAllFormTr') ?>
-                </button>
-            </div>
-            
-            <div id="vdp-message" style="margin-top: 15px;"></div>
-        </details>
-    </form>
-</div>
+
+                <div class="row mb-3">
+                    <label for="cosa" class="col-sm-12 col-form-label">
+                        <?= translate('planPage.whatView') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <select required class="form-control form-control-lg" name="cosa" id="vdp-cosa">
+                            <option disabled selected value>
+                                <?= translate('addEventPage.chooseList') ?>
+                            </option>
+                            <option value='cc'>
+                                <?= translate('addEventPage.selCcenter') ?>
+                            </option>
+                            <option value='quartiere'>
+                                <?= translate('addEventPage.selQcenter') ?>
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-12 col-form-label">
+                        <?= translate('viewCalendarPage.findWordTr') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control form-control-sm" id="vdp-keyword"
+                            placeholder="<?= translate('viewCalendarPage.insertWordTr') ?>">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label for="editable" class="col-sm-12 col-form-label">
+                        <?= translate('planPage.editSlide') ?>
+                    </label>
+                    <div class="col-sm-10">
+                        <select class="form-control form-control-lg" name="editable" id="vdp-editable">
+                            <option selected value='NO'>NO</option>
+                            <option value='SI'>
+                                <?= translate('addEventPage.chooseYes') ?>
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button type="button" id="vdp-loadEventsBtn" onclick="loadEventsForColorAssignment()">
+                        <?= translate('planPage.loadEvents') || '🔍 Carica Eventi' ?>
+                    </button>
+                </div>
+            </details>
+        </form>
+
+        <!-- STEP 2: ASSEGNAZIONE COLORI -->
+        <form id="vdp-form-step2" style="display: none;">
+            <details open>
+                <summary>
+                    <?= translate('planPage.step2Colors') || 'Step 2: Assegna Colori' ?>
+                </summary>
+
+                <div id="vdp-colorAssignment" style="margin: 15px 0;">
+                    <!-- Qui verrà caricata la tabella eventi -->
+                </div>
+
+                <div class="button-container">
+                    <button type="button" onclick="saveColorAssignments()">
+                        <?= translate('planPage.saveColors') || '💾 Salva Colori' ?>
+                    </button>
+                    <button type="button" onclick="resetColorAssignments()">
+                        <?= translate('planPage.resetColors') || '🔄 Reset' ?>
+                    </button>
+                </div>
+            </details>
+        </form>
+
+        <!-- STEP 3: GENERAZIONE -->
+        <form id="vdp-form-step3" style="display: none;">
+            <details open>
+                <summary>
+                    <?= translate('planPage.step3Generate') || 'Step 3: Genera Slide' ?>
+                </summary>
+
+                <div id="vdp-progress" style="margin: 15px 0; display: none;">
+                    <p><strong id="vdp-progressText">Generazione in corso...</strong></p>
+                    <div style="width: 100%; background: #ddd; height: 20px; border-radius: 10px;">
+                        <div id="vdp-progressBar"
+                            style="width: 0%; background: #4CAF50; height: 100%; border-radius: 10px; transition: width 0.3s;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button type="button" id="vdp-generateBtn" onclick="generateSlidesWithColors()">
+                        <?= translate('planPage.startGeneration') || '🚀 Genera Slide' ?>
+                    </button>
+                    <button type="button" onclick="resetVDPForm()">
+                        <?= translate('viewCalendarPage.delAllFormTr') ?>
+                    </button>
+                </div>
+
+                <div id="vdp-message" style="margin-top: 15px;"></div>
+            </details>
+        </form>
+    </div>
 
     <script>
-// INIZIO NUOVA SEZIONE PLAN
-// ==========================================
-// COLOR ASSIGNMENT LOGIC
-// ==========================================
+        // INIZIO NUOVA SEZIONE PLAN
+        // ==========================================
+        // COLOR ASSIGNMENT LOGIC
+        // ==========================================
 
-// Colori disponibili (0-9)
-const COLOR_PALETTE = [
-    { id: 0, name: 'Blu pastello', hex: '#4a86e8' },
-    { id: 1, name: 'Rosso', hex: '#ff0000' },
-    { id: 2, name: 'Viola', hex: '#9900ff' },
-    { id: 3, name: 'Giallo', hex: '#ffff00' },
-    { id: 4, name: 'Blu', hex: '#0000ff' },
-    { id: 5, name: 'Rosso scuro', hex: '#980000' },
-    { id: 6, name: 'Verde', hex: '#00ff00' },
-    { id: 7, name: 'Ciano', hex: '#00ffff' },
-    { id: 8, name: 'Arancione', hex: '#ff9900' },
-    { id: 9, name: 'Magenta', hex: '#ff00ff' },
-    { id: 10, name: 'Grigio', hex: '#666666' }
-];
+        // Colori disponibili (0-9)
+        const COLOR_PALETTE = [
+            { id: 0, name: 'Blu pastello', hex: '#4a86e8' },
+            { id: 1, name: 'Rosso', hex: '#ff0000' },
+            { id: 2, name: 'Viola', hex: '#9900ff' },
+            { id: 3, name: 'Giallo', hex: '#ffff00' },
+            { id: 4, name: 'Blu', hex: '#0000ff' },
+            { id: 5, name: 'Rosso scuro', hex: '#980000' },
+            { id: 6, name: 'Verde', hex: '#00ff00' },
+            { id: 7, name: 'Ciano', hex: '#00ffff' },
+            { id: 8, name: 'Arancione', hex: '#ff9900' },
+            { id: 9, name: 'Magenta', hex: '#ff00ff' },
+            { id: 10, name: 'Grigio', hex: '#666666' }
+        ];
 
-let currentEvents = [];
-let colorAssignments = {};
+        let currentEvents = [];
+        let colorAssignments = {};
 
-/**
- * Step 1: Carica eventi dal periodo selezionato
- */
-function loadEventsForColorAssignment() {
-    const startDate = document.getElementById('vdp-startDate').value;
-    const finishDate = document.getElementById('vdp-finishDate').value;
-    const keyword = document.getElementById('vdp-keyword').value;
-    
-    if (!startDate || !finishDate) {
-        alert(translate('alert.missingDates') || 'Inserisci le date!');
-        return;
-    }
-    
-    if (new Date(startDate) > new Date(finishDate)) {
-        alert(translate('alertHtml.messageDate') || 'Data iniziale > data finale!');
-        return;
-    }
-    
-    const btn = document.getElementById('vdp-loadEventsBtn');
-    btn.disabled = true;
-    btn.innerText = '⏳ Caricamento...';
-    
-    // Chiama il server per ottenere eventi unici
-    google.script.run
-        .withSuccessHandler(displayEventsForColorSelection)
-        .withFailureHandler(function(error) {
-            btn.disabled = false;
-            btn.innerText = '🔍 Carica Eventi';
-            alert('Errore: ' + error.message);
-        })
-        .getUniqueEventsForPeriod(startDate, finishDate, keyword);
-}
+        /**
+         * Step 1: Carica eventi dal periodo selezionato
+         */
+        function loadEventsForColorAssignment() {
+            const startDate = document.getElementById('vdp-startDate').value;
+            const finishDate = document.getElementById('vdp-finishDate').value;
+            const keyword = document.getElementById('vdp-keyword').value;
 
-/**
- * Mostra tabella eventi per selezione colori
- */
-function displayEventsForColorSelection(events) {
-  // Ripristina il bottone
-    const btn = document.getElementById('vdp-loadEventsBtn');
-    if (btn) {
-        btn.disabled = false;
-        btn.innerText = '🔍 Carica Eventi';
-    }
-    console.log('=== displayEventsForColorSelection chiamata ===');
-    console.log('Eventi ricevuti:', events);
-    
-    if (!events) {
-        console.error('Eventi è NULL o UNDEFINED');
-        alert('Errore: Nessun dato ricevuto dal server.');
-        return;
-    }
-    
-    if (!Array.isArray(events)) {
-        console.error('Eventi non è un array!');
-        alert('Errore: Dati nel formato errato.');
-        return;
-    }
-    
-    if (events.length === 0) {
-        console.warn('Array eventi vuoto');
-        alert('Nessun evento trovato nel periodo selezionato.');
-        return;
-    }
-    
-    console.log('✓ Eventi validi:', events.length);
-    
-    // Salva eventi
-    currentEvents = events;
-    
-    // Carica assegnazioni salvate
-    const saved = localStorage.getItem('vdp-colorAssignments');
-    console.log('LocalStorage vdp-colorAssignments:', saved);
-    
-    if (saved) {
-        try {
-            colorAssignments = JSON.parse(saved);
-            console.log('✓ Assegnazioni caricate:', colorAssignments);
-        } catch (e) {
-            console.error('✗ Errore parsing localStorage:', e);
-            colorAssignments = {};
+            if (!startDate || !finishDate) {
+                alert(translate('alert.missingDates') || 'Inserisci le date!');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(finishDate)) {
+                alert(translate('alertHtml.messageDate') || 'Data iniziale > data finale!');
+                return;
+            }
+
+            const btn = document.getElementById('vdp-loadEventsBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Caricamento...';
+
+            // Chiama il server per ottenere eventi unici
+            google.script.run
+                .withSuccessHandler(displayEventsForColorSelection)
+                .withFailureHandler(function (error) {
+                    btn.disabled = false;
+                    btn.innerText = '🔍 Carica Eventi';
+                    alert('Errore: ' + error.message);
+                })
+                .getUniqueEventsForPeriod(startDate, finishDate, keyword);
         }
-    } else {
-        console.log('Nessuna assegnazione salvata, creo nuova mappa');
-        colorAssignments = {};
-        
-        // ========================================
-        // CORREZIONE CRUCIALE: USA evt.acronym!
-        // ========================================
-        events.forEach((evt, idx) => {
-            // USA evt.acronym come chiave, NON idx!
-            colorAssignments[evt.acronym] = idx % 10;
-        });
-        // ========================================
-        
-        console.log('Mappa colori iniziale:', colorAssignments);
-    }
-    
-    // Genera tabella HTML
-    console.log('Generazione tabella HTML...');
-    let html = `
+
+        /**
+         * Mostra tabella eventi per selezione colori
+         */
+        function displayEventsForColorSelection(events) {
+            // Ripristina il bottone
+            const btn = document.getElementById('vdp-loadEventsBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = '🔍 Carica Eventi';
+            }
+            console.log('=== displayEventsForColorSelection chiamata ===');
+            console.log('Eventi ricevuti:', events);
+
+            if (!events) {
+                console.error('Eventi è NULL o UNDEFINED');
+                alert('Errore: Nessun dato ricevuto dal server.');
+                return;
+            }
+
+            if (!Array.isArray(events)) {
+                console.error('Eventi non è un array!');
+                alert('Errore: Dati nel formato errato.');
+                return;
+            }
+
+            if (events.length === 0) {
+                console.warn('Array eventi vuoto');
+                alert('Nessun evento trovato nel periodo selezionato.');
+                return;
+            }
+
+            console.log('✓ Eventi validi:', events.length);
+
+            // Salva eventi
+            currentEvents = events;
+
+            // Carica assegnazioni salvate
+            const saved = localStorage.getItem('vdp-colorAssignments');
+            console.log('LocalStorage vdp-colorAssignments:', saved);
+
+            if (saved) {
+                try {
+                    colorAssignments = JSON.parse(saved);
+                    console.log('✓ Assegnazioni caricate:', colorAssignments);
+                } catch (e) {
+                    console.error('✗ Errore parsing localStorage:', e);
+                    colorAssignments = {};
+                }
+            } else {
+                console.log('Nessuna assegnazione salvata, creo nuova mappa');
+                colorAssignments = {};
+
+                // ========================================
+                // CORREZIONE CRUCIALE: USA evt.acronym!
+                // ========================================
+                events.forEach((evt, idx) => {
+                    // USA evt.acronym come chiave, NON idx!
+                    colorAssignments[evt.acronym] = idx % 10;
+                });
+                // ========================================
+
+                console.log('Mappa colori iniziale:', colorAssignments);
+            }
+
+            // Genera tabella HTML
+            console.log('Generazione tabella HTML...');
+            let html = `
         <style>
             .color-table {
                 width: 250px;
@@ -1988,20 +2003,20 @@ function displayEventsForColorSelection(events) {
             </thead>
             <tbody>
     `;
-    
-    events.forEach((evt, idx) => {
-        const currentColor = colorAssignments[evt.acronym] || 0; // USA evt.acronym!
-        console.log(`  Riga ${idx}: ${evt.acronym} → Colore ${currentColor}`);
-        
-        html += `
+
+            events.forEach((evt, idx) => {
+                const currentColor = colorAssignments[evt.acronym] || 0; // USA evt.acronym!
+                console.log(`  Riga ${idx}: ${evt.acronym} → Colore ${currentColor}`);
+
+                html += `
             <tr>
                 <td title="${evt.fullName}">${evt.shortName}</td>
                 <td><strong>${evt.acronym.slice(0, 9)}</strong></td>
                 <td>
                     <select class="color-select" data-acronym="${evt.acronym}" onchange="updateColorPreview(this)">
-                        ${COLOR_PALETTE.map(c => 
-                            `<option value="${c.id}" ${c.id == currentColor ? 'selected' : ''}>${c.id} - ${c.name}</option>`
-                        ).join('')}
+                        ${COLOR_PALETTE.map(c =>
+                    `<option value="${c.id}" ${c.id == currentColor ? 'selected' : ''}>${c.id} - ${c.name}</option>`
+                ).join('')}
                     </select>
                 </td>
                 <td>
@@ -2010,9 +2025,9 @@ function displayEventsForColorSelection(events) {
                 </td>
             </tr>
         `;
-    });
-    
-    html += `
+            });
+
+            html += `
             </tbody>
         </table>
         <p style="font-size: 12px; color: #666; margin-top: 10px;">
@@ -2020,167 +2035,167 @@ function displayEventsForColorSelection(events) {
             Clicca "💾 Salva Colori" per confermare.
         </p>
     `;
-    
-    console.log('✓ Tabella HTML generata');
-    
-    const container = document.getElementById('vdp-colorAssignment');
-    if (!container) {
-        console.error('✗ Container vdp-colorAssignment non trovato!');
-        alert('Errore: Container HTML non trovato.');
-        return;
-    }
-    
-    container.innerHTML = html;
-    console.log('✓ HTML inserito nel DOM');
-    
-    // Mostra sezioni
-    document.getElementById('vdp-form-step2').style.display = 'block';
-    document.getElementById('vdp-form-step3').style.display = 'block';
-    console.log('✓ Sezioni step2 e step3 mostrate');
-    
-    console.log('=== displayEventsForColorSelection completata ===');
-}
 
-/**
- * Aggiorna anteprima colore in tempo reale
- */
-function updateColorPreview(selectElement) {
-    const acronym = selectElement.dataset.acronym;
-    const colorId = parseInt(selectElement.value);
-    const preview = document.getElementById(`preview-${acronym}`);
-    
-    preview.style.background = COLOR_PALETTE[colorId].hex;
-    colorAssignments[acronym] = colorId;
-}
+            console.log('✓ Tabella HTML generata');
 
-/**
- * Salva assegnazioni colori
- */
-function saveColorAssignments() {
-    console.log('=== saveColorAssignments chiamata ===');
-    
-    // Aggiorna tutte le assegnazioni dalla tabella
-    document.querySelectorAll('.color-select').forEach(select => {
-        const acronym = select.dataset.acronym; // ← Usa data-acronym, non indice!
-        colorAssignments[acronym] = parseInt(select.value);
-        console.log('  ' + acronym + ' → ' + select.value);
-    });
-    
-    console.log('Mappa finale da salvare:', colorAssignments);
-    
-    localStorage.setItem('vdp-colorAssignments', JSON.stringify(colorAssignments));
-    
-    console.log('✓ Salvato in localStorage');
-    console.log('=== saveColorAssignments completata ===');
-    
-    alert('✅ Assegnazione colori salvata!');
-}
+            const container = document.getElementById('vdp-colorAssignment');
+            if (!container) {
+                console.error('✗ Container vdp-colorAssignment non trovato!');
+                alert('Errore: Container HTML non trovato.');
+                return;
+            }
 
-/**
- * Reset assegnazioni colori
- */
-function resetColorAssignments() {
-    if (!confirm('Vuoi davvero resettare tutti i colori?')) return;
-    
-    localStorage.removeItem('vdp-colorAssignments');
-    colorAssignments = {};
-    
-    // Ricarica eventi
-    if (currentEvents.length > 0) {
-        displayEventsForColorSelection(currentEvents);
-    }
-}
+            container.innerHTML = html;
+            console.log('✓ HTML inserito nel DOM');
 
-/**
- * Step 3: Genera slide con colori assegnati
- */
-function generateSlidesWithColors() {
-    console.log('=== generateSlidesWithColors chiamata ===');
-    
-    saveColorAssignments(); // Salva prima di generare
-    
-    const startDate = document.getElementById('vdp-startDate').value;
-    const finishDate = document.getElementById('vdp-finishDate').value;
-    const keyword = document.getElementById('vdp-keyword').value;
-    const cosa = document.getElementById('vdp-cosa').value;
-    const editable = document.getElementById('vdp-editable').value;
-    
-    console.log('Parametri:');
-    console.log('  startDate:', startDate);
-    console.log('  finishDate:', finishDate);
-    console.log('  cosa:', cosa);
-    console.log('  editable:', editable);
-    console.log('  colorAssignments:', colorAssignments);
-    
-    const btn = document.getElementById('vdp-generateBtn');
-    btn.disabled = true;
-    btn.innerText = '⏳ Generazione...';
-    
-    // Mostra progress bar
-    document.getElementById('vdp-progress').style.display = 'block';
-    document.getElementById('vdp-progressText').innerText = 'Avvio generazione...';
-    document.getElementById('vdp-progressBar').style.width = '0%';
-    
-    // Calcola numero giorni
-    const days = Math.ceil((new Date(finishDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-    let currentDay = 0;
-    
-    console.log('Chiamata a createSlideAndExportToSheetImproved...');
-    
-    // Chiama funzione server con mappa colori
-    google.script.run
-        .withSuccessHandler(function(result) {
-            console.log('✓ Success:', result);
-            btn.disabled = false;
-            btn.innerText = '🚀 Genera Slide';
-            document.getElementById('vdp-progress').style.display = 'none';
-            document.getElementById('vdp-message').innerHTML = 
-                '<span style="color: green;">✅ Generazione completata!</span>';
-        })
-        .withFailureHandler(function(error) {
-            console.error('✗ Failure:', error);
-            btn.disabled = false;
-            btn.innerText = '🚀 Genera Slide';
-            document.getElementById('vdp-progress').style.display = 'none';
-            alert('Errore: ' + error.message);
-        })
-        .createSlideAndExportToSheetImproved(
-            startDate, 
-            finishDate, 
-            cosa, 
-            keyword, 
-            editable,
-            colorAssignments  // 👈 PASSA LA MAPPA CORRETTA
-        );
-    
-    console.log('=== generateSlidesWithColors completata (attesa risposta server) ===');
-    
-    // Simula progress (il server aggiornerà in realtà via UserProperties)
-    const progressInterval = setInterval(() => {
-        currentDay++;
-        const progress = Math.min((currentDay / days) * 100, 95);
-        document.getElementById('vdp-progressBar').style.width = progress + '%';
-        document.getElementById('vdp-progressText').innerText = 
-            `Elaborazione giorno ${currentDay} di ${days}...`;
-        
-        if (currentDay >= days) {
-            clearInterval(progressInterval);
+            // Mostra sezioni
+            document.getElementById('vdp-form-step2').style.display = 'block';
+            document.getElementById('vdp-form-step3').style.display = 'block';
+            console.log('✓ Sezioni step2 e step3 mostrate');
+
+            console.log('=== displayEventsForColorSelection completata ===');
         }
-    }, 3000);
-}
 
-/**
- * Reset completo form
- */
-function resetVDPForm() {
-    document.getElementById('vdp-form-step1').reset();
-    document.getElementById('vdp-form-step2').style.display = 'none';
-    document.getElementById('vdp-form-step3').style.display = 'none';
-    document.getElementById('vdp-colorAssignment').innerHTML = '';
-    document.getElementById('vdp-message').innerHTML = '';
-    currentEvents = [];
-}      
-// FINE NUOVA SEZIONE PLAN
+        /**
+         * Aggiorna anteprima colore in tempo reale
+         */
+        function updateColorPreview(selectElement) {
+            const acronym = selectElement.dataset.acronym;
+            const colorId = parseInt(selectElement.value);
+            const preview = document.getElementById(`preview-${acronym}`);
+
+            preview.style.background = COLOR_PALETTE[colorId].hex;
+            colorAssignments[acronym] = colorId;
+        }
+
+        /**
+         * Salva assegnazioni colori
+         */
+        function saveColorAssignments() {
+            console.log('=== saveColorAssignments chiamata ===');
+
+            // Aggiorna tutte le assegnazioni dalla tabella
+            document.querySelectorAll('.color-select').forEach(select => {
+                const acronym = select.dataset.acronym; // ← Usa data-acronym, non indice!
+                colorAssignments[acronym] = parseInt(select.value);
+                console.log('  ' + acronym + ' → ' + select.value);
+            });
+
+            console.log('Mappa finale da salvare:', colorAssignments);
+
+            localStorage.setItem('vdp-colorAssignments', JSON.stringify(colorAssignments));
+
+            console.log('✓ Salvato in localStorage');
+            console.log('=== saveColorAssignments completata ===');
+
+            alert('✅ Assegnazione colori salvata!');
+        }
+
+        /**
+         * Reset assegnazioni colori
+         */
+        function resetColorAssignments() {
+            if (!confirm('Vuoi davvero resettare tutti i colori?')) return;
+
+            localStorage.removeItem('vdp-colorAssignments');
+            colorAssignments = {};
+
+            // Ricarica eventi
+            if (currentEvents.length > 0) {
+                displayEventsForColorSelection(currentEvents);
+            }
+        }
+
+        /**
+         * Step 3: Genera slide con colori assegnati
+         */
+        function generateSlidesWithColors() {
+            console.log('=== generateSlidesWithColors chiamata ===');
+
+            saveColorAssignments(); // Salva prima di generare
+
+            const startDate = document.getElementById('vdp-startDate').value;
+            const finishDate = document.getElementById('vdp-finishDate').value;
+            const keyword = document.getElementById('vdp-keyword').value;
+            const cosa = document.getElementById('vdp-cosa').value;
+            const editable = document.getElementById('vdp-editable').value;
+
+            console.log('Parametri:');
+            console.log('  startDate:', startDate);
+            console.log('  finishDate:', finishDate);
+            console.log('  cosa:', cosa);
+            console.log('  editable:', editable);
+            console.log('  colorAssignments:', colorAssignments);
+
+            const btn = document.getElementById('vdp-generateBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Generazione...';
+
+            // Mostra progress bar
+            document.getElementById('vdp-progress').style.display = 'block';
+            document.getElementById('vdp-progressText').innerText = 'Avvio generazione...';
+            document.getElementById('vdp-progressBar').style.width = '0%';
+
+            // Calcola numero giorni
+            const days = Math.ceil((new Date(finishDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            let currentDay = 0;
+
+            console.log('Chiamata a createSlideAndExportToSheetImproved...');
+
+            // Chiama funzione server con mappa colori
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    console.log('✓ Success:', result);
+                    btn.disabled = false;
+                    btn.innerText = '🚀 Genera Slide';
+                    document.getElementById('vdp-progress').style.display = 'none';
+                    document.getElementById('vdp-message').innerHTML =
+                        '<span style="color: green;">✅ Generazione completata!</span>';
+                })
+                .withFailureHandler(function (error) {
+                    console.error('✗ Failure:', error);
+                    btn.disabled = false;
+                    btn.innerText = '🚀 Genera Slide';
+                    document.getElementById('vdp-progress').style.display = 'none';
+                    alert('Errore: ' + error.message);
+                })
+                .createSlideAndExportToSheetImproved(
+                    startDate,
+                    finishDate,
+                    cosa,
+                    keyword,
+                    editable,
+                    colorAssignments  // 👈 PASSA LA MAPPA CORRETTA
+                );
+
+            console.log('=== generateSlidesWithColors completata (attesa risposta server) ===');
+
+            // Simula progress (il server aggiornerà in realtà via UserProperties)
+            const progressInterval = setInterval(() => {
+                currentDay++;
+                const progress = Math.min((currentDay / days) * 100, 95);
+                document.getElementById('vdp-progressBar').style.width = progress + '%';
+                document.getElementById('vdp-progressText').innerText =
+                    `Elaborazione giorno ${currentDay} di ${days}...`;
+
+                if (currentDay >= days) {
+                    clearInterval(progressInterval);
+                }
+            }, 3000);
+        }
+
+        /**
+         * Reset completo form
+         */
+        function resetVDPForm() {
+            document.getElementById('vdp-form-step1').reset();
+            document.getElementById('vdp-form-step2').style.display = 'none';
+            document.getElementById('vdp-form-step3').style.display = 'none';
+            document.getElementById('vdp-colorAssignment').innerHTML = '';
+            document.getElementById('vdp-message').innerHTML = '';
+            currentEvents = [];
+        }
+        // FINE NUOVA SEZIONE PLAN
 
         // Populate ALL structure dropdowns at once on page load
         // This runs immediately since structuresData is already available
