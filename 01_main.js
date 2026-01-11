@@ -407,6 +407,7 @@ function getCurrentUserPermission() {
   var userIndex = findKey(user, users(), 0);
   
   if (userIndex >= 0) {
+    createUserSheet();
     return users()[userIndex][1];
   }
   
